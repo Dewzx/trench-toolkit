@@ -27,7 +27,7 @@ section{padding:56px 0 8px}h2{font-size:28px;margin:0 0 6px}.sub{color:var(--mut
 .stat b{display:block;font:800 20px Sora,sans-serif}.stat span,.mut{color:var(--mut);font-size:13px}
 .ring{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.ring svg{flex:none}
 .it{border-left:3px solid var(--line);padding:3px 12px;margin:10px 0;background:var(--s2);border-radius:0 10px 10px 0}
-.it.ok{border-color:var(--ok)}.it.warn{border-color:var(--warn)}.it.bad{border-color:var(--bad)}.it b{display:block}
+.it.ok{border-color:var(--ok)}.it.warn{border-color:var(--warn)}.it.bad{border-color:var(--bad)}.it.info{border-color:var(--v)}.it b{display:block}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 .row{display:flex;gap:10px;flex-wrap:wrap}label{display:grid;gap:3px;font-size:12px;color:var(--mut)}
 input,select{background:var(--s2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:9px 10px;font:inherit;width:100%}
@@ -50,8 +50,11 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <details class="card" id="man"><summary>Adjust or enter values manually</summary><div class="row" id="rugIn"></div></details>
 </section>
 
-<section id="analyzer"><h2>Exit Analyzer <span class="pill">sample wallet</span></h2>
-<p class="sub">See what you would have made with a better exit plan. Rules only use prices from while you were holding, never the perfect top. Wallet import comes next.</p>
+<section id="analyzer"><h2>Exit Analyzer <span class="pill" id="axMode">sample wallet</span></h2>
+<p class="sub">See what you would have made with a better exit plan. Rules only use prices from while you were holding, never the perfect top.</p>
+<div class="card"><div class="row"><label>Your Solana wallet address<input id="wa" placeholder="Wallet address"></label></div>
+<button class="btn" style="margin-top:10px" onclick="loadWallet()">Analyze my real exits on the scanned token</button>
+<p class="mut" id="waSt" style="margin:10px 0 0">Scan a token above first (needs a pool paired with SOL), then paste your wallet. Beta: reads your last 40 transactions on-chain, so give it a minute.</p></div>
 <div id="ax"></div></section>
 
 <section id="liq"><h2>Exit Liquidity Meter</h2>
@@ -75,23 +78,27 @@ const $=id=>document.getElementById(id),num=id=>+$(id).value||0,usd=n=>"$"+Math.
 const cls=n=>n>=0?"ok":"bad",sg=n=>(n<0?"-":"+")+usd(Math.abs(n));
 
 /* ---------- Live scan (free public APIs, no keys) ---------- */
-let LIVE=[];
+let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""};
 const j=(u,o)=>fetch(u,o).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()});
 const rpc=(method,params)=>j("https://api.mainnet-beta.solana.com",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})}).then(x=>{if(x.error)throw new Error(x.error.message);return x.result});
 async function scan(){
  const m=$("ca").value.trim();
  if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(m)){$("st").textContent="That does not look like a Solana address (32 to 44 letters and numbers).";return}
- $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];const log=[],src=[];let mk=null,ok=false;
+ $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];INSIGHT=[];TOKX={img:null,sym:"",name:""};const log=[],src=[];let mk=null,ok=false;
  // 1) market data: DexScreener, then GeckoTerminal
  try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+m);if(!Array.isArray(d)||!d.length)throw new Error("no pairs found");
   const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
-  mk={name:p.baseToken.name,sym:p.baseToken.symbol,price:p.priceUsd,liq:p.liquidity?.usd||0,mc:p.marketCap||p.fdv||0,vol:p.volume?.h24||0,ch:p.priceChange?.h24,age:p.pairCreatedAt?(Date.now()-p.pairCreatedAt)/36e5:null};src.push("DexScreener")}catch(e){log.push("DexScreener: "+e.message)}
+  mk={name:p.baseToken.name,sym:p.baseToken.symbol,price:p.priceUsd,liq:p.liquidity?.usd||0,mc:p.marketCap||p.fdv||0,vol:p.volume?.h24||0,ch:p.priceChange?.h24,age:p.pairCreatedAt?(Date.now()-p.pairCreatedAt)/36e5:null,
+  buys:p.txns?.h24?.buys,sells:p.txns?.h24?.sells,pair:p.pairAddress,quote:p.quoteToken?.symbol,boosts:p.boosts?.active||0,pools:d.length};TOKX.sym=mk.sym;TOKX.name=mk.name;TOKX.img=p.info?.imageUrl||null;src.push("DexScreener")}catch(e){log.push("DexScreener: "+e.message)}
  if(!mk)try{const g=(await j("https://api.geckoterminal.com/api/v2/networks/solana/tokens/"+m)).data.attributes;
   mk={name:g.name,sym:g.symbol,price:g.price_usd,liq:+g.total_reserve_in_usd||0,mc:+g.market_cap_usd||+g.fdv_usd||0,vol:+(g.volume_usd&&g.volume_usd.h24)||0,ch:null,age:null};src.push("GeckoTerminal")}catch(e){log.push("GeckoTerminal: "+e.message)}
- if(mk){$("tok").innerHTML=`<div class="card"><b style="font:800 22px Sora">${mk.name} <span class="mut">${mk.sym}</span></b><div class="grid" style="margin-top:12px">
+ if(mk){const bsr=mk.buys!=null&&mk.sells!=null?mk.buys/(mk.sells||1):null;
+  $("tok").innerHTML=`<div class="card"><div class="row" style="align-items:center;justify-content:space-between"><b style="font:800 22px Sora">${mk.name} <span class="mut">${mk.sym}</span></b>${mk.boosts?`<span class="pill" style="color:var(--warn);border-color:var(--warn)">🚀 ${mk.boosts} paid boost${mk.boosts>1?"s":""}</span>`:""}</div><div class="grid" style="margin-top:12px">
   <div class="stat"><b>$${mk.price||"?"}</b><span>Price</span></div><div class="stat"><b>${usd(mk.liq)}</b><span>Liquidity</span></div>
   <div class="stat"><b>${usd(mk.mc)}</b><span>Market cap</span></div><div class="stat"><b>${usd(mk.vol)}</b><span>24h volume</span></div>
-  <div class="stat"><b class="${mk.ch>=0?"ok":"bad"}">${mk.ch!=null?mk.ch+"%":"n/a"}</b><span>24h change</span></div><div class="stat"><b>${mk.age!=null?(mk.age<48?mk.age.toFixed(0)+"h":(mk.age/24).toFixed(0)+"d"):"n/a"}</b><span>Pair age</span></div></div></div>`;
+  <div class="stat"><b class="${mk.ch>=0?"ok":"bad"}">${mk.ch!=null?mk.ch+"%":"n/a"}</b><span>24h change</span></div><div class="stat"><b>${mk.age!=null?(mk.age<48?mk.age.toFixed(0)+"h":(mk.age/24).toFixed(0)+"d"):"n/a"}</b><span>Pair age</span></div>
+  <div class="stat"><b class="${bsr==null?"":bsr>=1?"ok":"bad"}">${mk.buys!=null?mk.buys+" / "+mk.sells:"n/a"}</b><span>Buys/sells 24h</span></div><div class="stat"><b>${mk.pools||1}</b><span>Pools found</span></div>
+  </div></div><div id="insightOut"></div>`;
   if(mk.liq){$("L").value=Math.round(mk.liq);liq()}}
  // 2) safety data: RugCheck, then the Solana chain itself
  try{const R=await j("https://api.rugcheck.xyz/v1/tokens/"+m+"/report");
@@ -100,10 +107,19 @@ async function scan(){
   const lp=Math.max(0,...(R.markets||[]).map(x=>(x.lp&&x.lp.lpLockedPct)||0));$("lp").value=lp>=90?"locked":"open";
   if(R.creatorBalance&&R.token&&R.token.supply)$("dev").value=Math.round(R.creatorBalance/R.token.supply*1000)/10;
   $("tax").value=(R.transferFee&&R.transferFee.pct)||0;
-  LIVE=(R.risks||[]).map(x=>({sev:x.level=="danger"?"bad":x.level=="warn"?"warn":"ok",t:"Flagged: "+x.name,d:x.description||""}));ok=true;src.push("RugCheck")}catch(e){log.push("RugCheck: "+e.message)}
+  LIVE=(R.risks||[]).map(x=>({sev:x.level=="danger"?"bad":x.level=="warn"?"warn":"ok",t:"Flagged: "+x.name,d:x.description||""}));ok=true;src.push("RugCheck");
+  TOKX.img=R.tokenMeta?.image||R.fileMeta?.image||null;TOKX.sym=R.tokenMeta?.symbol||mk?.sym||"";TOKX.name=R.tokenMeta?.name||mk?.name||"";
+  const insN=(R.insiderNetworks||[]).length,gi=R.graphInsidersDetected||0;
+  if(insN||gi)INSIGHT.push({t:(gi||insN)+" linked wallet"+((gi||insN)>1?"s":"")+" found (insider network)",d:"RugCheck's wallet-graph analysis found wallets that were funded together or trade in sync, likely one person or team behind several \"different\" holders. No price chart shows you this."});
+  if(R.totalHolders)INSIGHT.push({t:R.totalHolders+" total holders",d:"How many wallets hold this token, from RugCheck's index."});
+  if(R.score!=null)INSIGHT.push({t:"RugCheck score: "+R.score,d:"RugCheck's own composite risk score, for a second opinion alongside ours."})}catch(e){log.push("RugCheck: "+e.message)}
  if(!ok)try{const a=((await rpc("getAccountInfo",[m,{encoding:"jsonParsed"}])).value||{}).data;const i=a&&a.parsed&&a.parsed.info;if(!i)throw new Error("not a token mint");
   $("mint").value=i.mintAuthority?"active":"revoked";$("freeze").value=i.freezeAuthority?"active":"revoked";ok=true;src.push("Solana RPC");
   LIVE=[{sev:"warn",t:"Holders, liquidity lock, dev share and sell tax were not auto-filled",d:"Only mint and freeze authority came from the chain. Check the other values yourself and adjust them below."}]}catch(e){log.push("Solana RPC: "+e.message)}
+ if(mk){if(mk.boosts)INSIGHT.push({t:"Paid boost active ("+mk.boosts+")",d:"The team is paying DexScreener to push visibility. Not a red flag by itself, but it means the attention you're seeing is bought, not organic."});
+  if(mk.pools>1)INSIGHT.push({t:mk.pools+" separate pools found",d:"Multiple pools can mean real multi-DEX liquidity, or it can mean liquidity is split thin across venues. Check which pool actually has the depth."});
+  if(mk.buys!=null&&mk.sells!=null&&mk.sells>0&&mk.buys/mk.sells<0.6)INSIGHT.push({t:"Sell-heavy: "+mk.buys+" buys vs "+mk.sells+" sells (24h)",d:"More people selling than buying right now. Worth noticing even if the chart still looks green."})}
+ if(INSIGHT.length&&$("insightOut"))$("insightOut").innerHTML=`<div class="card" style="margin-top:12px"><b style="font:800 15px Sora;color:var(--v)">🔎 What most terminals don't show you</b>${INSIGHT.map(i=>`<div class="it info"><b>${i.t}</b><span class="mut">${i.d}</span></div>`).join("")}</div>`;
  if(!mk&&!ok){$("st").textContent="No live data could be loaded. "+log.join(" | ")+". If this page is open inside a preview or sandboxed viewer, the browser blocks outside requests. Try it on your hosted site. You can still enter values manually below.";$("man").open=true}
  else $("st").textContent="Loaded from: "+src.join(", ")+"."+(log.length?" Unavailable: "+log.join(" | ")+".":"")+" Values below were auto-filled and you can adjust them.";
  rug();
@@ -126,11 +142,30 @@ function rug(){const g=id=>$(id).value,top=num("top"),dev=num("dev"),tax=num("ta
  <div><b style="font:800 24px Sora" class="${gr[1]}">${gr[0]}</b><div class="mut">Score out of 100. Passing does not mean safe: hidden bundles and coordinated dumps are not covered.</div><button class="btn g" style="margin-top:10px" onclick="card()">Download risk card</button></div></div>
  ${RC.I.map(i=>`<div class="it ${i.sev}"><b>${i.t}</b><span class="mut">${i.d}</span></div>`).join("")}</div>`}
 document.querySelectorAll("#rugIn select,#rugIn input").forEach(e=>e.oninput=rug);rug();
-function card(){const c=document.createElement("canvas");c.width=600;c.height=315;const x=c.getContext("2d");x.fillStyle="#0a0913";x.fillRect(0,0,600,315);
- x.fillStyle="#9a97c4";x.font="16px sans-serif";x.fillText("Rug check",24,36);x.fillStyle=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73";x.font="bold 64px sans-serif";x.fillText(RC.s+"/100",24,110);x.font="20px sans-serif";x.fillText(RC.grade,24,140);
- x.fillStyle="#eceaff";x.font="15px sans-serif";RC.I.filter(i=>i.sev!="ok").slice(0,4).forEach((i,k)=>x.fillText("• "+i.t.slice(0,60),24,180+k*26));
- x.fillStyle="#9a97c4";x.font="12px sans-serif";x.fillText("Trench Toolkit · educational, not financial advice",24,298);
- const a=document.createElement("a");a.download="risk-card.png";a.href=c.toDataURL("image/png");a.click()}
+async function card(noImg){const c=document.createElement("canvas");c.width=800;c.height=800;const x=c.getContext("2d");
+ const bg=x.createLinearGradient(0,0,800,800);bg.addColorStop(0,"#0a0913");bg.addColorStop(1,"#1a1834");x.fillStyle=bg;x.fillRect(0,0,800,800);
+ const g1=x.createRadialGradient(660,90,10,660,90,340);g1.addColorStop(0,"#8b6cff55");g1.addColorStop(1,"#8b6cff00");x.fillStyle=g1;x.fillRect(0,0,800,800);
+ const g2=x.createRadialGradient(110,720,10,110,720,300);g2.addColorStop(0,"#ff5fa244");g2.addColorStop(1,"#ff5fa200");x.fillStyle=g2;x.fillRect(0,0,800,800);
+ let img=null;if(!noImg&&TOKX.img){try{img=await new Promise((res,rej)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>res(im);im.onerror=rej;setTimeout(rej,4000);im.src=TOKX.img})}catch(e){img=null}}
+ x.save();x.beginPath();x.arc(122,122,64,0,Math.PI*2);x.closePath();x.clip();
+ if(img)x.drawImage(img,58,58,128,128);else{x.fillStyle="#292651";x.fillRect(58,58,128,128);x.fillStyle="#eceaff";x.textAlign="center";x.textBaseline="middle";x.font="800 56px Sora";x.fillText(((TOKX.sym||"?")[0]||"?").toUpperCase(),122,126)}
+ x.restore();x.textAlign="left";x.textBaseline="alphabetic";
+ x.fillStyle="#eceaff";x.font="800 42px Sora";x.fillText("$"+(TOKX.sym||"TOKEN"),210,112);
+ x.fillStyle="#9a97c4";x.font="17px DM Sans";x.fillText((TOKX.name||"").slice(0,34),210,140);
+ const cx=660,cy=122,rr=84,frac=RC.s/100,col=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73";
+ x.lineWidth=14;x.strokeStyle="#292651";x.beginPath();x.arc(cx,cy,rr,0,Math.PI*2);x.stroke();
+ x.strokeStyle=col;x.lineCap="round";x.beginPath();x.arc(cx,cy,rr,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);x.stroke();
+ x.textAlign="center";x.fillStyle="#eceaff";x.font="800 42px Sora";x.fillText(RC.s,cx,cy+12);x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("/ 100",cx,cy+32);
+ x.font="800 21px Sora";x.fillStyle=col;x.fillText(RC.grade,cx,cy+68);x.textAlign="left";
+ x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(56,224);x.lineTo(744,224);x.stroke();
+ x.font="700 15px Sora";x.fillStyle="#9a97c4";x.fillText("KEY FLAGS",56,260);
+ x.font="18px DM Sans";const bad=RC.I.filter(i=>i.sev!="ok");
+ if(!bad.length){x.fillStyle="#3df2b0";x.fillText("No classic red flags found in this check.",70,306)}
+ bad.slice(0,6).forEach((i,k)=>{const y=302+k*48,dot=i.sev=="bad"?"#ff5d73":"#ffc44d";x.fillStyle=dot;x.beginPath();x.arc(66,y-6,6,0,Math.PI*2);x.fill();x.fillStyle="#eceaff";const t=i.t.length>50?i.t.slice(0,50)+"…":i.t;x.fillText(t,86,y)});
+ x.font="800 23px Sora";x.fillStyle="#eceaff";x.fillText("🧪 Trench Toolkit",56,748);
+ x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("Check the coin before it checks you · free & open source · not financial advice",56,772);
+ let url;try{url=c.toDataURL("image/png")}catch(e){return card(true)}
+ const a=document.createElement("a");a.download=(TOKX.sym||"risk")+"-card.png";a.href=url;a.click()}
 
 /* ---------- Exit analyzer (sample data) ---------- */
 const SLIP=.04;
@@ -142,13 +177,54 @@ function sim(t,r){let rem=1,cash=0,peak=1;const dn=(r.tp||[]).map(()=>0);
   if(rem>0&&r.stop&&v<=1-r.stop){cash+=rem*v*(1-SLIP);rem=0}else if(rem>0&&r.trail&&peak>=1.5&&v<=peak*(1-r.trail)){cash+=rem*v*(1-SLIP);rem=0}}
  if(rem>0)cash+=rem*t.p[t.e];return cash}
 const pnl=(ts,r)=>ts.reduce((a,t)=>a+t.s*((r?sim(t,r):t.p[t.e])-1),0),avg=a=>a.reduce((x,y)=>x+y,0)/(a.length||1);
-(function(){const base=pnl(T),res=RULES.map(r=>({r,p:pnl(T,r)})).sort((a,b)=>b.p-a.p),best=res[0],h=6,fit=RULES.map(r=>({r,p:pnl(T.slice(0,h),r)})).sort((a,b)=>b.p-a.p)[0].r;
+function renderSample(){const base=pnl(T),res=RULES.map(r=>({r,p:pnl(T,r)})).sort((a,b)=>b.p-a.p),best=res[0],h=6,fit=RULES.map(r=>({r,p:pnl(T.slice(0,h),r)})).sort((a,b)=>b.p-a.p)[0].r;
  const gb=T.filter(t=>{const pk=Math.max(...t.p.slice(0,t.e+1));return pk>=2&&t.p[t.e]<pk*.5}),w=T.filter(t=>t.p[t.e]>=1),l=T.filter(t=>t.p[t.e]<1),se=T.filter(t=>Math.max(...t.p.slice(t.e+1))>=t.p[t.e]*2.5),late=T.filter(t=>t.run>=150);
  const F=[[`You gave back big gains on ${gb.length} of ${T.length} trades`,"Each hit 2x while you held, then you sold for under half the peak. Selling part at 2x recovers your entry, so the rest is a free roll."],[`You hold losers ${(avg(l.map(t=>t.e))/avg(w.map(t=>t.e))).toFixed(1)}x longer than winners`,"One -90% loss takes about nine 2x wins to repair. A stop caps the damage."],[`You sold ${se.length} winners before another 2.5x or more`,"A ladder keeps a small piece running, so you bank profit and still catch continuation."],[`${late.length} buys came after a 150%+ run, and ${late.filter(t=>t.p[t.e]<1).length} lost`,"Late entries have the least upside left and the most holders waiting to sell to you."]];
  $("ax").innerHTML=`<div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(base)}" style="display:block;font:800 36px Sora">${sg(base)}</b><span class="mut">${T.length} trades</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 36px Sora">${sg(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
  <div class="card tw"><table><tr><th>Exit rule</th><th>P&L</th><th>vs actual</th></tr>${res.map(x=>`<tr><td>${x.r.name}</td><td class="${cls(x.p)}">${sg(x.p)}</td><td class="${cls(x.p-base)}">${sg(x.p-base)}</td></tr>`).join("")}</table></div>
  <div class="card"><b>Does it hold up?</b> <span class="mut">Best rule on your first ${h} trades: "${fit.name}". On your next ${T.length-h}: ${sg(pnl(T.slice(h),fit))} vs your actual ${sg(pnl(T.slice(h)))}.</span></div>
- ${F.map(f=>`<div class="it warn"><b>${f[0]}</b><span class="mut">${f[1]}</span></div>`).join("")}`})();
+ ${F.map(f=>`<div class="it warn"><b>${f[0]}</b><span class="mut">${f[1]}</span></div>`).join("")}`}
+renderSample();
+
+/* ---------- Exit analyzer: real wallet (beta) ---------- */
+async function loadWallet(){
+ const w=$("wa").value.trim();
+ if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w)){$("waSt").textContent="That does not look like a Solana wallet address.";return}
+ if(!mk||!mk.pair){$("waSt").textContent="Scan a token above first — this needs its pool address to price your trades.";return}
+ if((mk.quote||"").toUpperCase()!="SOL"){$("waSt").textContent="This beta only handles tokens paired directly with SOL, and this one is paired with "+(mk.quote||"something else")+".";return}
+ const mint=$("ca").value.trim();$("waSt").textContent="Reading your last 40 transactions on-chain, this can take 20-40 seconds...";
+ try{
+  const sigs=await rpc("getSignaturesForAddress",[w,{limit:40}]);
+  if(!sigs.length)throw new Error("no transactions found for this wallet");
+  const ev=[];
+  for(const sg of sigs){let tx;try{tx=await rpc("getTransaction",[sg.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}])}catch(e){continue}
+   if(!tx||!tx.meta||tx.meta.err)continue;
+   const idx=tx.transaction.message.accountKeys.findIndex(a=>(a.pubkey||a)===w);if(idx<0)continue;
+   const pre=(tx.meta.preTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w),post=(tx.meta.postTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w);
+   const tb=pre?+pre.uiTokenAmount.uiAmount:0,ta=post?+post.uiTokenAmount.uiAmount:0,dTok=ta-tb;if(Math.abs(dTok)<1e-6)continue;
+   const sb=tx.meta.preBalances[idx]/1e9,sa=tx.meta.postBalances[idx]/1e9,dSol=sa-sb+(tx.meta.fee||0)/1e9;
+   ev.push({t:sg.blockTime,dTok,dSol})}
+  if(!ev.length)throw new Error("no swaps of this token found in your last 40 transactions");
+  ev.sort((a,b)=>a.t-b.t);
+  const buys=ev.filter(e=>e.dTok>0);if(!buys.length)throw new Error("no buys of this token found, only sells or transfers");
+  const from=buys[0].t,entryPriceSol=-buys[0].dSol/buys[0].dTok;
+  const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
+  let list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]).filter(r=>r[0]>=from-3600);
+  if(list.length<3)throw new Error("not enough hourly price history since your first buy to run the comparison");
+  const baseUsd=list[0][4],prices=[1,...list.map(r=>r[4]/baseUsd)];
+  const totalSpent=ev.filter(e=>e.dTok>0).reduce((a,e)=>a-e.dSol,0),totalRecv=ev.filter(e=>e.dTok<0).reduce((a,e)=>a+e.dSol,0),netTok=ev.reduce((a,e)=>a+e.dTok,0),heldNow=netTok>1e-6;
+  const lastT=ev[ev.length-1].t;let eIdx=prices.length-1;
+  if(!heldNow){const li=list.findIndex(r=>r[0]>=lastT);eIdx=li<0?prices.length-1:li+1}
+  const curSol=entryPriceSol*prices[prices.length-1],unreal=heldNow?netTok*curSol:0,actual=totalRecv-totalSpent+unreal;
+  const T2=[{s:totalSpent,e:eIdx,run:0,p:prices}],res=RULES.map(r=>({r,p:pnl(T2,r)-totalSpent})).sort((a,b)=>b.p-a.p),best=res[0];
+  const so=n=>(n<0?"-":"+")+Math.abs(n).toFixed(3)+" SOL";
+  $("axMode").textContent="your wallet";
+  $("ax").innerHTML=`<div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(actual)}" style="display:block;font:800 32px Sora">${so(actual)}</b><span class="mut">${totalSpent.toFixed(3)} SOL in${heldNow?", still holding part":", fully closed"}</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 32px Sora">${so(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
+  <div class="card tw"><table><tr><th>Exit rule</th><th>P&L</th><th>vs actual</th></tr>${res.map(x=>`<tr><td>${x.r.name}</td><td class="${cls(x.p)}">${so(x.p)}</td><td class="${cls(x.p-actual)}">${so(x.p-actual)}</td></tr>`).join("")}</table></div>
+  <div class="it info"><b>How this was built</b><span class="mut">Pulled from your wallet's real token-balance changes on this mint, priced with real hourly candles since your first buy. Multiple buys/sells are combined into one position, and this assumes SOL's own USD price stayed roughly flat during your hold — usually fine over hours to a couple days. Beta: a best-effort read of on-chain data, not tax or accounting output.</span></div>`;
+  $("waSt").textContent="Loaded "+ev.length+" balance-changing transactions on this token since "+new Date(from*1e3).toLocaleString()+"."
+ }catch(e){$("waSt").textContent="Could not build your real exit history: "+e.message+". You can still browse the sample wallet above."}
+}
 
 /* ---------- Exit liquidity ---------- */
 function liq(){const L=num("L")/2,P=num("P"),Q=num("Q");if(L<=0){$("liqOut").textContent="Enter pool liquidity.";return}
