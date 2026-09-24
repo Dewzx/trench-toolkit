@@ -38,7 +38,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;p
 footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;color:var(--mut);font-size:13px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style></head><body>
-<header><div class="w"><span class="logo">Trench Toolkit</span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#board">Leaderboard</a></div></header>
+<header><div class="w"><span class="logo">Trench Toolkit</span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#hot">Hot Tokens</a></div></header>
 <main class="w">
 
 <section class="hero" id="scan">
@@ -76,9 +76,10 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <label style="max-width:200px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="hardMode" style="width:auto" onchange="ci=0;spot()"> Advanced (harder cases)</span></label>
 <div class="card" id="spotBox"></div></section>
 
-<section id="board"><h2>Leaderboard</h2><p class="sub">Saved on this device only (no server yet) — enter a name and submit your Spot the Rug score.</p>
-<div class="card"><div class="row"><label>Name<input id="lbName" maxlength="16" placeholder="anon"></label></div><button class="btn" style="margin-top:10px" onclick="submitScore()">Submit current score</button><p class="mut" id="lbSt" style="margin:10px 0 0"></p></div>
-<div class="card tw" id="lbOut"></div></section>
+<section id="hot"><h2>Hot Tokens <span class="pill">trending + quick heuristic, not a full check</span></h2>
+<p class="sub">Live trending Solana pools (from GeckoTerminal), ranked by 24h volume. Each gets a fast heuristic read from liquidity, volume and age — this is <b>not</b> a full rug check. Click Scan on any of them to run the real thing.</p>
+<div class="card"><button class="btn" onclick="loadHot()">Refresh trending</button><p class="mut" id="hotSt" style="margin:10px 0 0">Loading...</p></div>
+<div id="hotOut"></div></section>
 
 <section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Unlimited heavy tools, premium Discord, full Exit Analyzer history from your wallet, unbranded risk cards, saved wallets. Core tools stay free.</p></div></section>
 </main>
@@ -89,7 +90,7 @@ const $=id=>document.getElementById(id),num=id=>+$(id).value||0,usd=n=>"$"+Math.
 const cls=n=>n>=0?"ok":"bad",sg=n=>(n<0?"-":"+")+usd(Math.abs(n));
 
 /* ---------- Live scan (free public APIs, no keys) ---------- */
-let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""};
+let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""},mk=null,HOLDERS=[],TAGS={};
 const j=(u,o)=>fetch(u,o).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()});
 const RPCS=["https://solana-rpc.publicnode.com","https://api.mainnet-beta.solana.com"];
 async function rpc(method,params){let lastErr;for(const ep of RPCS){try{const x=await j(ep,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});if(x.error)throw new Error(x.error.message);return x.result}catch(e){lastErr=e}}throw lastErr}
@@ -97,7 +98,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function scan(){
  const m=$("ca").value.trim();
  if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(m)){$("st").textContent="That does not look like a Solana address (32 to 44 letters and numbers).";return}
- $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];INSIGHT=[];TOKX={img:null,sym:"",name:""};const log=[],src=[];let mk=null,ok=false;
+ $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];INSIGHT=[];TOKX={img:null,sym:"",name:""};HOLDERS=[];const log=[],src=[];mk=null;let ok=false;
  // 1) market data: DexScreener, then GeckoTerminal
  try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+m);if(!Array.isArray(d)||!d.length)throw new Error("no pairs found");
   const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
@@ -117,6 +118,7 @@ async function scan(){
  try{const R=await j("https://api.rugcheck.xyz/v1/tokens/"+m+"/report");
   $("mint").value=R.mintAuthority?"active":"revoked";$("freeze").value=R.freezeAuthority?"active":"revoked";
   const th=(R.topHolders||[]).slice(0,10).reduce((a,h)=>a+(h.pct||0),0);if(th)$("top").value=Math.round(th*10)/10;
+  HOLDERS=(R.topHolders||[]).slice(0,10).map(h=>({addr:h.address||h.owner||"",pct:h.pct||0}));
   const lp=Math.max(0,...(R.markets||[]).map(x=>(x.lp&&x.lp.lpLockedPct)||0));$("lp").value=lp>=90?"locked":"open";
   if(R.creatorBalance&&R.token&&R.token.supply)$("dev").value=Math.round(R.creatorBalance/R.token.supply*1000)/10;
   $("tax").value=(R.transferFee&&R.transferFee.pct)||0;
@@ -163,30 +165,42 @@ function rug(){const g=id=>$(id).value,top=num("top"),dev=num("dev"),tax=num("ta
  $("rugOut").innerHTML=`<div class="card"><div class="ring"><svg width="110" height="110" viewBox="0 0 42 42"><circle cx="21" cy="21" r="16" fill="none" stroke="#292651" stroke-width="4"/><circle cx="21" cy="21" r="16" fill="none" stroke="${gr[2]}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${s} 100.5" transform="rotate(-90 21 21)" pathLength="100.5"/><text x="21" y="24.5" text-anchor="middle" fill="#eceaff" font-size="11" font-weight="800" font-family="Sora">${s}</text></svg>
  <div><b style="font:800 24px Sora" class="${gr[1]}">${gr[0]}</b><div class="mut">Score out of 100. Passing does not mean safe: hidden bundles and coordinated dumps are not covered.</div><button class="btn g" style="margin-top:10px" onclick="card()">Preview report card</button></div></div>
  ${RC.I.map(i=>`<div class="it ${i.sev}"><b>${i.t}</b><span class="mut">${i.d}</span></div>`).join("")}
- <div id="cardPrevWrap" style="display:none;margin-top:14px"><canvas id="cardCanvas" style="width:100%;max-width:340px;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto"></canvas><div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="dlCard()">Download PNG</button></div></div></div>`}
+ ${HOLDERS.length?`<div class="card tw" style="margin-top:10px"><b>Top holders <span class="pill">your own wallet tags, not verified identities</span></b><table><tr><th>Wallet</th><th>%</th><th>Your tag</th><th></th></tr>${HOLDERS.map((h,i)=>`<tr><td class="mut">${h.addr?h.addr.slice(0,4)+"…"+h.addr.slice(-4):"n/a"}</td><td>${h.pct.toFixed(1)}%</td><td id="htag${i}">${loadTags()[h.addr]||"—"}</td><td>${h.addr?`<button class="btn g" style="padding:4px 10px;font-size:12px" onclick="tagPrompt('${h.addr}',${i})">Tag</button>`:""}</td></tr>`).join("")}</table><p class="mut" style="margin-top:8px">Tags are labels you add yourself (saved on this device) — e.g. a wallet you know from elsewhere. We never guess whose wallet this is.</p></div>`:""}
+ <div id="cardPrevWrap" style="display:none;margin-top:14px"><canvas id="cardCanvas" style="width:100%;max-width:380px;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto"></canvas><div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="dlCard()">Download PNG</button></div></div></div>`}
 document.querySelectorAll("#rugIn select,#rugIn input").forEach(e=>e.oninput=rug);rug();
-async function card(noImg){$("cardPrevWrap").style.display="block";const c=$("cardCanvas");c.width=800;c.height=800;const x=c.getContext("2d");
- const bg=x.createLinearGradient(0,0,800,800);bg.addColorStop(0,"#0a0913");bg.addColorStop(1,"#1a1834");x.fillStyle=bg;x.fillRect(0,0,800,800);
- const g1=x.createRadialGradient(660,90,10,660,90,340);g1.addColorStop(0,"#8b6cff55");g1.addColorStop(1,"#8b6cff00");x.fillStyle=g1;x.fillRect(0,0,800,800);
- const g2=x.createRadialGradient(110,720,10,110,720,300);g2.addColorStop(0,"#ff5fa244");g2.addColorStop(1,"#ff5fa200");x.fillStyle=g2;x.fillRect(0,0,800,800);
+function loadTags(){try{return JSON.parse(localStorage.getItem("tt_tags")||"{}")}catch(e){return{}}}
+function tagPrompt(addr,i){const cur=loadTags();const v=prompt("Your label for this wallet ("+addr.slice(0,4)+"…"+addr.slice(-4)+"):",cur[addr]||"");if(v===null)return;const t=loadTags();if(v.trim())t[addr]=v.trim().slice(0,40);else delete t[addr];localStorage.setItem("tt_tags",JSON.stringify(t));$("htag"+i).textContent=t[addr]||"—"}
+async function card(noImg){$("cardPrevWrap").style.display="block";const c=$("cardCanvas");c.width=800;c.height=1000;const x=c.getContext("2d");
+ const bg=x.createLinearGradient(0,0,800,1000);bg.addColorStop(0,"#0a0913");bg.addColorStop(1,"#150f2e");x.fillStyle=bg;x.fillRect(0,0,800,1000);
+ const g1=x.createRadialGradient(680,60,10,680,60,360);g1.addColorStop(0,"#8b6cff4d");g1.addColorStop(1,"#8b6cff00");x.fillStyle=g1;x.fillRect(0,0,800,1000);
+ const g2=x.createRadialGradient(80,940,10,80,940,320);g2.addColorStop(0,"#ff5fa23d");g2.addColorStop(1,"#ff5fa200");x.fillStyle=g2;x.fillRect(0,0,800,1000);
+ const bd=x.createLinearGradient(0,0,800,1000);bd.addColorStop(0,"#8b6cff");bd.addColorStop(1,"#ff5fa2");x.strokeStyle=bd;x.lineWidth=3;x.strokeRect(6,6,788,988);
+ x.fillStyle="#8b6cff";x.font="800 15px Sora";x.textAlign="left";x.fillText("🧪  TRENCH TOOLKIT",40,52);
+ x.fillStyle="#9a97c4";x.font="700 12px DM Sans";x.textAlign="right";x.fillText("RISK REPORT",760,52);
+ x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,72);x.lineTo(760,72);x.stroke();
  let img=null;if(!noImg&&TOKX.img){try{img=await new Promise((res,rej)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>res(im);im.onerror=rej;setTimeout(rej,4000);im.src=TOKX.img})}catch(e){img=null}}
- x.save();x.beginPath();x.arc(122,122,64,0,Math.PI*2);x.closePath();x.clip();
- if(img)x.drawImage(img,58,58,128,128);else{x.fillStyle="#292651";x.fillRect(58,58,128,128);x.fillStyle="#eceaff";x.textAlign="center";x.textBaseline="middle";x.font="800 56px Sora";x.fillText(((TOKX.sym||"?")[0]||"?").toUpperCase(),122,126)}
+ x.save();x.beginPath();x.arc(108,164,58,0,Math.PI*2);x.closePath();x.clip();
+ if(img)x.drawImage(img,50,106,116,116);else{x.fillStyle="#292651";x.fillRect(50,106,116,116);x.fillStyle="#eceaff";x.textAlign="center";x.textBaseline="middle";x.font="800 50px Sora";x.fillText(((TOKX.sym||"?")[0]||"?").toUpperCase(),108,164)}
  x.restore();x.textAlign="left";x.textBaseline="alphabetic";
- x.fillStyle="#eceaff";x.font="800 42px Sora";x.fillText("$"+(TOKX.sym||"TOKEN"),210,112);
- x.fillStyle="#9a97c4";x.font="17px DM Sans";x.fillText((TOKX.name||"").slice(0,34),210,140);
- const cx=660,cy=122,rr=84,frac=RC.s/100,col=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73";
- x.lineWidth=14;x.strokeStyle="#292651";x.beginPath();x.arc(cx,cy,rr,0,Math.PI*2);x.stroke();
+ x.fillStyle="#eceaff";x.font="800 38px Sora";x.fillText("$"+(TOKX.sym||"TOKEN"),190,150);
+ x.fillStyle="#9a97c4";x.font="16px DM Sans";x.fillText((TOKX.name||"").slice(0,32),190,178);
+ const cx=670,cy=164,rr=76,frac=RC.s/100,col=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73";
+ x.lineWidth=13;x.strokeStyle="#292651";x.beginPath();x.arc(cx,cy,rr,0,Math.PI*2);x.stroke();
  x.strokeStyle=col;x.lineCap="round";x.beginPath();x.arc(cx,cy,rr,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);x.stroke();
- x.textAlign="center";x.fillStyle="#eceaff";x.font="800 42px Sora";x.fillText(RC.s,cx,cy+12);x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("/ 100",cx,cy+32);
- x.font="800 21px Sora";x.fillStyle=col;x.fillText(RC.grade,cx,cy+68);x.textAlign="left";
- x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(56,224);x.lineTo(744,224);x.stroke();
- x.font="700 15px Sora";x.fillStyle="#9a97c4";x.fillText("KEY FLAGS",56,260);
- x.font="18px DM Sans";const bad=RC.I.filter(i=>i.sev!="ok");
- if(!bad.length){x.fillStyle="#3df2b0";x.fillText("No classic red flags found in this check.",70,306)}
- bad.slice(0,6).forEach((i,k)=>{const y=302+k*48,dot=i.sev=="bad"?"#ff5d73":"#ffc44d";x.fillStyle=dot;x.beginPath();x.arc(66,y-6,6,0,Math.PI*2);x.fill();x.fillStyle="#eceaff";const t=i.t.length>50?i.t.slice(0,50)+"…":i.t;x.fillText(t,86,y)});
- x.font="800 23px Sora";x.fillStyle="#eceaff";x.fillText("🧪 Trench Toolkit",56,748);
- x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("Check the coin before it checks you · free & open source · not financial advice",56,772);
+ x.textAlign="center";x.fillStyle="#eceaff";x.font="800 38px Sora";x.fillText(RC.s,cx,cy+10);x.font="12px DM Sans";x.fillStyle="#9a97c4";x.fillText("/ 100",cx,cy+30);
+ x.font="800 18px Sora";x.fillStyle=col;x.fillText(RC.grade,cx,cy+96);x.textAlign="left";
+ const stats=[["Price",mk&&mk.price?"$"+mk.price:"n/a"],["Liquidity",mk?usd(mk.liq):"n/a"],["Market cap",mk?usd(mk.mc):"n/a"],["24h volume",mk?usd(mk.vol):"n/a"]];
+ const sw=180;x.font="700 11px DM Sans";x.fillStyle="#9a97c4";
+ stats.forEach((s,i)=>{const sx=40+i*sw;x.fillStyle="#9a97c4";x.font="700 11px DM Sans";x.fillText(s[0].toUpperCase(),sx,254);x.fillStyle="#eceaff";x.font="800 20px Sora";x.fillText(s[1],sx,280)});
+ x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,310);x.lineTo(760,310);x.stroke();
+ x.font="700 14px Sora";x.fillStyle="#9a97c4";x.fillText("KEY FLAGS",40,344);
+ x.font="17px DM Sans";const bad=RC.I.filter(i=>i.sev!="ok");
+ if(!bad.length){x.fillStyle="#3df2b0";x.fillText("No classic red flags found in this check.",40,382)}
+ bad.slice(0,8).forEach((i,k)=>{const y=382+k*44,dot=i.sev=="bad"?"#ff5d73":"#ffc44d";x.fillStyle=dot;x.beginPath();x.arc(48,y-6,5,0,Math.PI*2);x.fill();x.fillStyle="#eceaff";const t=i.t.length>54?i.t.slice(0,54)+"…":i.t;x.fillText(t,66,y)});
+ const fy=940;x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,fy-30);x.lineTo(760,fy-30);x.stroke();
+ x.font="800 20px Sora";x.fillStyle="#eceaff";x.fillText("🧪 Trench Toolkit",40,fy);
+ x.textAlign="right";x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText(new Date().toLocaleDateString(),760,fy);x.textAlign="left";
+ x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("Free memecoin risk checks · not financial advice · passing ≠ safe",40,fy+24);
  try{c.toDataURL("image/png")}catch(e){if(!noImg)return card(true)}}
 function dlCard(){const c=$("cardCanvas");let url;try{url=c.toDataURL("image/png")}catch(e){return}
  const a=document.createElement("a");a.download=(TOKX.sym||"risk")+"-card.png";a.href=url;a.click()}
@@ -257,12 +271,22 @@ async function loadWallet(){
 
 /* ---------- Strategy Lab (real backtest on scanned token) ---------- */
 const DIPS=[{name:"Wait for -50% dip, scalp +20%",dip:.5,tp:.2,sl:.15},{name:"Wait for -80% dip, scalp +30%",dip:.8,tp:.3,sl:.2},{name:"Wait for -65% dip, hold for 2x",dip:.65,tp:1,sl:.25}];
+function simMark(prices,r){let rem=1,peak=1,exitIdx=prices.length-1;const dn=(r.tp||[]).map(()=>0);
+ for(let i=1;i<prices.length&&rem>0;i++){const v=prices[i];peak=Math.max(peak,v);
+  (r.tp||[]).forEach(([m,f],k)=>{if(!dn[k]&&v>=m&&rem>0){rem-=Math.min(f,rem);dn[k]=1;exitIdx=i}});
+  if(rem>0&&r.stop&&v<=1-r.stop){rem=0;exitIdx=i}else if(rem>0&&r.trail&&peak>=1.5&&v<=peak*(1-r.trail)){rem=0;exitIdx=i}}
+ return exitIdx}
 function dipScalp(prices,r){let peak=prices[0],entry=null,ei=-1;
  for(let i=0;i<prices.length;i++){peak=Math.max(peak,prices[i]);
   if(entry==null&&prices[i]<=peak*(1-r.dip)){entry=prices[i];ei=i;continue}
-  if(entry!=null){const chg=prices[i]/entry-1;if(chg>=r.tp)return{ret:r.tp*(1-SLIP),entered:true,exited:true};if(chg<=-r.sl)return{ret:-r.sl*(1+SLIP)-SLIP,entered:true,exited:true}}}
- if(entry!=null)return{ret:(prices[prices.length-1]/entry-1)*(1-SLIP),entered:true,exited:false};
- return{ret:0,entered:false,exited:false}}
+  if(entry!=null){const chg=prices[i]/entry-1;if(chg>=r.tp)return{ret:r.tp*(1-SLIP),entered:true,exited:true,ei,xi:i};if(chg<=-r.sl)return{ret:-r.sl*(1+SLIP)-SLIP,entered:true,exited:true,ei,xi:i}}}
+ if(entry!=null)return{ret:(prices[prices.length-1]/entry-1)*(1-SLIP),entered:true,exited:false,ei,xi:prices.length-1};
+ return{ret:0,entered:false,exited:false,ei:-1,xi:-1}}
+function sparkline(prices,markers){const w=680,h=180,pad=8,mx=Math.max(...prices),mn=Math.min(...prices),rg=(mx-mn)||1;
+ const X=i=>pad+i/(prices.length-1)*(w-2*pad),Y=v=>h-pad-(v-mn)/rg*(h-2*pad);
+ const d=prices.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" ");
+ const dots=markers.map(m=>m.i>=0?`<circle cx="${X(m.i).toFixed(1)}" cy="${Y(prices[m.i]).toFixed(1)}" r="5" fill="${m.c}"/><text x="${X(m.i).toFixed(1)}" y="${Y(prices[m.i])-10}" fill="${m.c}" font-size="11" font-family="DM Sans" text-anchor="middle">${m.l}</text>`:"").join("");
+ return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block"><path d="${d}" fill="none" stroke="#8b6cff" stroke-width="2"/>${dots}</svg>`}
 async function runStrat(){
  if(!mk||!mk.pair){$("stratSt").textContent="Scan a token above first.";return}
  if((mk.quote||"").toUpperCase()!="SOL"){$("stratSt").textContent="This only works for SOL-paired pools right now.";return}
@@ -272,8 +296,9 @@ async function runStrat(){
   const list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]);
   if(list.length<5)throw new Error("not enough price history yet for this pool");
   const base=list[0][4],prices=list.map(r=>r[4]/base);
-  const holdRes=RULES.map(r=>({name:r.name,ret:sim([{s:1,e:prices.length-1,run:0,p:prices}],r)-1})).sort((a,b)=>b.ret-a.ret);
+  const holdRes=RULES.map(r=>({name:r.name,rule:r,ret:sim([{s:1,e:prices.length-1,run:0,p:prices}],r)-1})).sort((a,b)=>b.ret-a.ret);
   const dipRes=DIPS.map(r=>({name:r.name,...dipScalp(prices,r)}));
+  const bestHold=holdRes[0],bestDip=dipRes.filter(d=>d.entered).sort((a,b)=>b.ret-a.ret)[0],bestHoldExit=simMark(prices,bestHold.rule);
   const bsr=mk.buys!=null&&mk.sells!=null?mk.buys/(mk.sells||1):null;
   const hype=[];
   if(mk.vol&&mk.mc)hype.push(mk.vol/mk.mc>0.3?"24h volume is over 30% of market cap — still actively traded.":"Volume is thin relative to market cap — interest may be fading.");
@@ -281,6 +306,7 @@ async function runStrat(){
   if(mk.boosts)hype.push("Attention is partly paid (active boosts), not fully organic.");
   const pos=num("stratPos")||500;
   $("stratOut").innerHTML=`<div class="card"><b>Signal read</b>${hype.map(h=>`<div class="it info"><b>${h}</b></div>`).join("")||'<div class="mut">No strong signal either way from current stats.</div>'}</div>
+  <div class="card"><b>Best rule on this chart</b><div class="mut" style="margin:6px 0 10px">Green = entry, pink = exit, for "${bestHold.name}"${bestDip?` (yellow = dip-entry play: "${bestDip.name}")`:""}.</div>${sparkline(prices,[{i:0,c:"#3df2b0",l:"Entry"},{i:bestHoldExit,c:"#ff5d73",l:"Exit"}].concat(bestDip?[{i:bestDip.ei,c:"#ffc44d",l:"Dip entry"},{i:bestDip.xi,c:"#ff5d73",l:"Exit"}]:[]))}</div>
   <div class="card"><label>Hypothetical position size (USD)<input id="stratPos" type="number" value="${pos}" oninput="runStrat()"></label></div>
   <div class="card tw"><b>If you bought at launch and held with a rule</b><table><tr><th>Rule</th><th>Return</th><th>on ${usd(pos)}</th></tr>${holdRes.map(r=>`<tr><td>${r.name}</td><td class="${cls(r.ret)}">${(r.ret*100).toFixed(0)}%</td><td class="${cls(r.ret)}">${sg(pos*r.ret)}</td></tr>`).join("")}</table></div>
   <div class="card tw"><b>If you waited for a dip instead of buying launch (new-pair scalp)</b><table><tr><th>Rule</th><th>Triggered?</th><th>Return</th><th>on ${usd(pos)}</th></tr>${dipRes.map(r=>`<tr><td>${r.name}</td><td class="mut">${r.entered?(r.exited?"yes, closed":"yes, still open"):"never dipped that far"}</td><td class="${cls(r.ret)}">${(r.ret*100).toFixed(0)}%</td><td class="${cls(r.ret)}">${sg(pos*r.ret)}</td></tr>`).join("")}</table></div>
@@ -319,13 +345,33 @@ function spot(){const P=pool(),c=P[ci%P.length];$("spotBox").innerHTML=`<b>Token
 function ans(g){const P=pool(),c=P[ci%P.length];n++;if(g===c.rug)ok++;$("sc").textContent=ok+"/"+n;$("spotBox").innerHTML+=`<p class="${g===c.rug?"ok":"bad"}"><b>${g===c.rug?"Correct.":"Not quite."}</b> <span class="mut">${c.why}</span></p><button class="btn g" onclick="ci++;spot()">Next token</button>`}
 spot();
 
-/* ---------- Leaderboard (localStorage, per-device) ---------- */
-function loadLB(){try{return JSON.parse(localStorage.getItem("tt_lb")||"[]")}catch(e){return[]}}
-function submitScore(){if(n===0){$("lbSt").textContent="Play a round of Spot the Rug first.";return}
- const name=($("lbName").value.trim()||"anon").slice(0,16),lb=loadLB();
- lb.push({name,ok,n,pct:Math.round(ok/n*100),mode:$("hardMode")&&$("hardMode").checked?"advanced":"standard",t:Date.now()});
- lb.sort((a,b)=>b.pct-a.pct||b.n-a.n);localStorage.setItem("tt_lb",JSON.stringify(lb.slice(0,50)));
- $("lbSt").textContent="Saved.";renderLB()}
-function renderLB(){const lb=loadLB();$("lbOut").innerHTML=lb.length?`<table><tr><th>#</th><th>Name</th><th>Score</th><th>Mode</th></tr>${lb.slice(0,10).map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.ok}/${r.n} (${r.pct}%)</td><td class="mut">${r.mode}</td></tr>`).join("")}</table>`:'<p class="mut">No scores yet on this device.</p>'}
-renderLB();
+/* ---------- Hot Tokens (trending, quick heuristic only) ---------- */
+function heuristic(p){let s=100;const flags=[];
+ const liq=p.liq||0,vol=p.vol||0,ageH=p.ageH;
+ if(liq<8000){s-=30;flags.push(["bad","Thin liquidity ("+usd(liq)+")"])}else if(liq<25000){s-=12;flags.push(["warn","Modest liquidity ("+usd(liq)+")"])}
+ const vlr=liq>0?vol/liq:0;
+ if(vlr>8){s-=25;flags.push(["bad","Volume is "+vlr.toFixed(1)+"x liquidity — wash-trade-like"])}else if(vlr>3){s-=10;flags.push(["warn","Volume "+vlr.toFixed(1)+"x liquidity — very hot, or juiced"])}
+ if(ageH!=null&&ageH<2){s-=15;flags.push(["warn","Pool is under 2h old"])}
+ if(Math.abs(p.ch||0)>150){s-=10;flags.push(["warn","24h move of "+p.ch.toFixed(0)+"% — volatile"])}
+ s=Math.max(0,Math.min(100,s));
+ const grade=s>=75?["Looks stable","ok"]:s>=45?["Caution","warn"]:["High risk","bad"];
+ return{s,grade,flags}}
+async function loadHot(){$("hotSt").textContent="Loading trending Solana pools...";$("hotOut").innerHTML="";
+ try{
+  const d=await j("https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?include=base_token&page=1");
+  const included={};(d.included||[]).forEach(t=>included[t.id]=t.attributes);
+  const rows=(d.data||[]).map(p=>{const a=p.attributes,tokId=p.relationships?.base_token?.data?.id,tok=included[tokId]||{},mint=tokId?tokId.split("_").slice(1).join("_"):null;
+   const liq=+a.reserve_in_usd||0,vol=+(a.volume_usd&&a.volume_usd.h24)||0,ch=+(a.price_change_percentage&&a.price_change_percentage.h24)||0,ageH=a.pool_created_at?(Date.now()-new Date(a.pool_created_at).getTime())/36e5:null;
+   return{name:a.name||"",price:a.base_token_price_usd,liq,vol,ch,ageH,mint,img:tok.image_url&&!tok.image_url.includes("missing")?tok.image_url:null}}).filter(r=>r.mint).slice(0,15);
+  if(!rows.length)throw new Error("no trending pools returned");
+  $("hotSt").textContent="Updated "+new Date().toLocaleTimeString()+" · "+rows.length+" pools.";
+  $("hotOut").innerHTML=rows.map(r=>{const h=heuristic(r);
+   return `<div class="card"><div class="row" style="align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+   <div class="row" style="align-items:center;gap:12px;min-width:0"><div style="width:38px;height:38px;border-radius:50%;background:var(--s2);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font:800 15px Sora">${r.img?`<img src="${r.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`:((r.name||"?")[0]||"?")}</div>
+   <div style="min-width:0"><b style="font:700 15px Sora">${(r.name||"unknown").slice(0,40)}</b><div class="mut" style="font-size:12px">${usd(r.liq)} liq · ${usd(r.vol)} 24h vol · <span class="${r.ch>=0?'ok':'bad'}">${r.ch.toFixed(0)}%</span> 24h ${r.ageH!=null?"· "+(r.ageH<48?r.ageH.toFixed(0)+"h old":(r.ageH/24).toFixed(0)+"d old"):""}</div></div></div>
+   <div class="row" style="align-items:center;gap:10px;flex:none"><span class="pill ${h.grade[1]}" style="border-color:currentColor">${h.grade[0]} · ${h.s}</span><button class="btn g" onclick="scanFromHot('${r.mint}')">Scan</button></div></div>
+   ${h.flags.length?`<div style="margin-top:8px">${h.flags.map(f=>`<span class="pill ${f[0]}" style="margin:2px 4px 0 0;border-color:currentColor">${f[1]}</span>`).join("")}</div>`:""}</div>`}).join("");
+ }catch(e){$("hotSt").textContent="Could not load trending pools: "+e.message}}
+function scanFromHot(mint){$("ca").value=mint;location.hash="#scan";scan()}
+loadHot();
 </script></body></html>
