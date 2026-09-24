@@ -14,7 +14,12 @@ h1,h2,h3,.logo{font-family:Sora,system-ui,sans-serif;letter-spacing:-.02em}
 .w{max-width:960px;margin:0 auto;padding:0 18px}
 header{position:sticky;top:0;z-index:9;backdrop-filter:blur(14px);background:#0a0913cc;border-bottom:1px solid var(--line)}
 header .w{display:flex;align-items:center;gap:18px;height:56px;overflow-x:auto}
-.logo{font-weight:800;white-space:nowrap}header a{color:var(--mut);text-decoration:none;font-size:14px;white-space:nowrap}header a:hover{color:var(--fg)}
+.logo{font-weight:800;white-space:nowrap;display:flex;align-items:center;gap:8px}.logo b{background:linear-gradient(135deg,var(--v),var(--p));-webkit-background-clip:text;background-clip:text;color:transparent}
+header a{color:var(--mut);text-decoration:none;font-size:14px;white-space:nowrap}header a:hover{color:var(--fg)}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--s);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font:700 13px Sora;color:var(--v);margin-bottom:18px}
+.trust{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 0;color:var(--mut);font-size:13px}.trust span{display:flex;align-items:center;gap:6px}
+#top-btn{position:fixed;right:18px;bottom:18px;z-index:20;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--v),var(--p));color:#fff;border:0;display:none;align-items:center;justify-content:center;font-size:18px;cursor:pointer;box-shadow:0 6px 20px #00000066}
+#top-btn.show{display:flex}
 section{padding:56px 0 8px}h2{font-size:28px;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 20px;max-width:60ch}
 .hero{padding-top:64px}.hero h1{font-size:clamp(34px,7vw,60px);line-height:1.05;margin:0 0 14px;font-weight:800}
 .scan{display:flex;gap:10px;flex-wrap:wrap;background:var(--s);border:1px solid var(--line);border-radius:var(--r);padding:10px}
@@ -38,13 +43,15 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;p
 footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;color:var(--mut);font-size:13px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style></head><body>
-<header><div class="w"><span class="logo">Trench Toolkit</span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#hot">Hot Tokens</a></div></header>
+<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#hot">Hot Tokens</a></div></header>
 <main class="w">
 
 <section class="hero" id="scan">
+<span class="eyebrow">🧪 TRENCH TOOLKIT · free memecoin toolkit</span>
 <h1>Check the coin before it checks you.</h1>
 <p class="sub">Paste a Solana token address. We pull live market data and safety flags, score them, and explain every result in plain English. Free.</p>
 <form class="scan" onsubmit="event.preventDefault();scan()"><input id="ca" placeholder="Token address (Solana)" aria-label="Token address" autocomplete="off"><button class="btn">Scan token</button></form>
+<div class="trust"><span>🧪 Free, always</span><span>⚡ Live on-chain + market data</span><span>🔒 No wallet connect, no signup</span></div>
 <p class="mut" id="st"></p>
 <div id="tok"></div><div id="rugOut"></div>
 <details class="card" id="man"><summary>Adjust or enter values manually</summary><label style="max-width:220px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="advMode" style="width:auto" onchange="rug()"> Advanced mode (more signals, stricter scoring)</span></label><div class="row" id="rugIn"></div><div class="row" id="rugInAdv" style="display:none"></div></details>
@@ -84,9 +91,11 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Unlimited heavy tools, premium Discord, full Exit Analyzer history from your wallet, unbranded risk cards, saved wallets. Core tools stay free.</p></div></section>
 </main>
 <footer><div class="w">Educational what-if tools, not financial advice. Passing a check never means a token is safe. Data from public APIs and may be delayed or wrong. Add your own Terms and Privacy pages before promoting the site.</div></footer>
+<button id="top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top" title="Back to top">↑</button>
 
 <script>
 const $=id=>document.getElementById(id),num=id=>+$(id).value||0,usd=n=>"$"+Math.round(n).toLocaleString();
+addEventListener("scroll",()=>$("top-btn").classList.toggle("show",scrollY>600));
 const cls=n=>n>=0?"ok":"bad",sg=n=>(n<0?"-":"+")+usd(Math.abs(n));
 
 /* ---------- Live scan (free public APIs, no keys) ---------- */
@@ -238,9 +247,9 @@ async function loadWallet(){
   const sigs=await rpc("getSignaturesForAddress",[w,{limit:40}]);
   if(!sigs.length)throw new Error("no transactions found for this wallet");
   const ev=[];
-  for(const sg of sigs){let tx;
-   for(let tries=0;tries<3&&!tx;tries++){try{tx=await rpc("getTransaction",[sg.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}])}catch(e){await sleep(400*(tries+1))}}
-   await sleep(120);
+  for(let si=0;si<sigs.length;si++){const sg=sigs[si];let tx;
+   $("waSt").textContent="Reading transaction "+(si+1)+" of "+sigs.length+"...";
+   for(let tries=0;tries<2&&!tx;tries++){try{tx=await rpc("getTransaction",[sg.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}])}catch(e){await sleep(350*(tries+1))}}
    if(!tx||!tx.meta||tx.meta.err)continue;
    const idx=tx.transaction.message.accountKeys.findIndex(a=>(a.pubkey||a)===w);if(idx<0)continue;
    const pre=(tx.meta.preTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w),post=(tx.meta.postTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w);
@@ -252,6 +261,7 @@ async function loadWallet(){
   const buys=ev.filter(e=>e.dTok>0);if(!buys.length)throw new Error("no buys of this token found, only sells or transfers");
   const from=buys[0].t,entryPriceSol=-buys[0].dSol/buys[0].dTok;
   const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
+  if(!oh||!oh.data||!oh.data.attributes)throw new Error("no price history available for this pool yet");
   let list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]).filter(r=>r[0]>=from-3600);
   if(list.length<3)throw new Error("not enough hourly price history since your first buy to run the comparison");
   const baseUsd=list[0][4],prices=[1,...list.map(r=>r[4]/baseUsd)];
@@ -293,6 +303,7 @@ async function runStrat(){
  $("stratSt").textContent="Pulling full hourly price history...";
  try{
   const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
+  if(!oh||!oh.data||!oh.data.attributes)throw new Error("no price history available for this pool yet");
   const list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]);
   if(list.length<5)throw new Error("not enough price history yet for this pool");
   const base=list[0][4],prices=list.map(r=>r[4]/base);
@@ -304,7 +315,7 @@ async function runStrat(){
   if(mk.vol&&mk.mc)hype.push(mk.vol/mk.mc>0.3?"24h volume is over 30% of market cap — still actively traded.":"Volume is thin relative to market cap — interest may be fading.");
   if(bsr!=null)hype.push(bsr>=1?"More buys than sells in the last 24h.":"More sells than buys in the last 24h — momentum looks weak.");
   if(mk.boosts)hype.push("Attention is partly paid (active boosts), not fully organic.");
-  const pos=num("stratPos")||500;
+  const posEl=$("stratPos"),pos=(posEl&&+posEl.value)||500;
   $("stratOut").innerHTML=`<div class="card"><b>Signal read</b>${hype.map(h=>`<div class="it info"><b>${h}</b></div>`).join("")||'<div class="mut">No strong signal either way from current stats.</div>'}</div>
   <div class="card"><b>Best rule on this chart</b><div class="mut" style="margin:6px 0 10px">Green = entry, pink = exit, for "${bestHold.name}"${bestDip?` (yellow = dip-entry play: "${bestDip.name}")`:""}.</div>${sparkline(prices,[{i:0,c:"#3df2b0",l:"Entry"},{i:bestHoldExit,c:"#ff5d73",l:"Exit"}].concat(bestDip?[{i:bestDip.ei,c:"#ffc44d",l:"Dip entry"},{i:bestDip.xi,c:"#ff5d73",l:"Exit"}]:[]))}</div>
   <div class="card"><label>Hypothetical position size (USD)<input id="stratPos" type="number" value="${pos}" oninput="runStrat()"></label></div>
