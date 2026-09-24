@@ -61,7 +61,7 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <p class="sub">See what you would have made with a better exit plan. Rules only use prices from while you were holding, never the perfect top.</p>
 <div class="card"><div class="row"><label>Your Solana wallet address<input id="wa" placeholder="Wallet address"></label></div>
 <button class="btn" style="margin-top:10px" onclick="loadWallet()">Analyze my real exits on the scanned token</button>
-<p class="mut" id="waSt" style="margin:10px 0 0">Scan a token above first (needs a pool paired with SOL), then paste your wallet. Beta: reads your last 40 transactions on-chain, so give it a minute.</p></div>
+<p class="mut" id="waSt" style="margin:10px 0 0">Scan a token above to analyze that trade, or just paste a wallet with nothing scanned to see its most recent trade. Beta: reads your last 40 transactions on-chain, so give it a minute.</p></div>
 <div id="ax"></div></section>
 
 <section id="strat"><h2>Strategy Lab <span class="pill">backtest, not prediction</span></h2>
@@ -234,33 +234,42 @@ function renderSample(){const base=pnl(T),res=RULES.map(r=>({r,p:pnl(T,r)})).sor
 renderSample();
 
 /* ---------- Exit analyzer: real wallet (beta) ---------- */
+const WSOL="So11111111111111111111111111111111111111112";
+async function fetchPairInfo(mint){try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+mint);const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];return{sym:p.baseToken.symbol,name:p.baseToken.name,pair:p.pairAddress,quote:p.quoteToken?.symbol}}catch(e){return null}}
 async function loadWallet(){
  const w=$("wa").value.trim();
  if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w)){$("waSt").textContent="That does not look like a Solana wallet address.";return}
- const mint=$("ca").value.trim();
- if(!mk||!mint){$("waSt").textContent="Scan a token above first — this needs its pool address to price your trades.";return}
- if(!mk.pair){try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+mint);const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];mk.pair=p.pairAddress;mk.quote=p.quoteToken?.symbol}catch(e){}}
- if(!mk.pair){$("waSt").textContent="Could not find this token's pool address — try re-scanning it.";return}
- if((mk.quote||"").toUpperCase()!="SOL"){$("waSt").textContent="This beta only handles tokens paired directly with SOL, and this one is paired with "+(mk.quote||"something else")+".";return}
+ const scannedMint=$("ca").value.trim();
  $("waSt").textContent="Reading your last 40 transactions on-chain, this can take 30-60 seconds...";
  try{
   const sigs=await rpc("getSignaturesForAddress",[w,{limit:40}]);
   if(!sigs.length)throw new Error("no transactions found for this wallet");
-  const ev=[];
+  const byMint={};
   for(let si=0;si<sigs.length;si++){const sg=sigs[si];let tx;
    $("waSt").textContent="Reading transaction "+(si+1)+" of "+sigs.length+"...";
    for(let tries=0;tries<2&&!tx;tries++){try{tx=await rpc("getTransaction",[sg.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}])}catch(e){await sleep(350*(tries+1))}}
    if(!tx||!tx.meta||tx.meta.err)continue;
    const idx=tx.transaction.message.accountKeys.findIndex(a=>(a.pubkey||a)===w);if(idx<0)continue;
-   const pre=(tx.meta.preTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w),post=(tx.meta.postTokenBalances||[]).find(b=>b.mint===mint&&b.owner===w);
-   const tb=pre?+pre.uiTokenAmount.uiAmount:0,ta=post?+post.uiTokenAmount.uiAmount:0,dTok=ta-tb;if(Math.abs(dTok)<1e-6)continue;
    const sb=tx.meta.preBalances[idx]/1e9,sa=tx.meta.postBalances[idx]/1e9,dSol=sa-sb+(tx.meta.fee||0)/1e9;
-   ev.push({t:sg.blockTime,dTok,dSol})}
-  if(!ev.length)throw new Error("no swaps of this token found in your last 40 transactions");
+   const mints=new Set([...(tx.meta.preTokenBalances||[]),...(tx.meta.postTokenBalances||[])].filter(b=>b.owner===w&&b.mint!==WSOL).map(b=>b.mint));
+   mints.forEach(mt=>{const pre=(tx.meta.preTokenBalances||[]).find(b=>b.mint===mt&&b.owner===w),post=(tx.meta.postTokenBalances||[]).find(b=>b.mint===mt&&b.owner===w);
+    const tb=pre?+pre.uiTokenAmount.uiAmount:0,ta=post?+post.uiTokenAmount.uiAmount:0,dTok=ta-tb;if(Math.abs(dTok)<1e-6)return;
+    (byMint[mt]=byMint[mt]||[]).push({t:sg.blockTime,dTok,dSol})})}
+  let mint=scannedMint,ev=byMint[mint]||[],fallbackNote="";
+  if(!ev.filter(e=>e.dTok>0).length){
+   const cands=Object.keys(byMint).filter(m=>byMint[m].some(e=>e.dTok>0));
+   if(!cands.length)throw new Error("no token swaps found in your last 40 transactions at all");
+   cands.sort((a,b)=>Math.max(...byMint[b].map(e=>e.t))-Math.max(...byMint[a].map(e=>e.t)));
+   mint=cands[0];ev=byMint[mint];
+   fallbackNote=scannedMint?"No swaps of the scanned token were found — showing your most recent traded token instead.":"Showing your most recent traded token.";
+  }
+  let pairInfo=mint===scannedMint&&mk&&mk.pair?{sym:mk.sym,name:mk.name,pair:mk.pair,quote:mk.quote}:await fetchPairInfo(mint);
+  if(!pairInfo||!pairInfo.pair)throw new Error("could not find a pool for this token to price your trades");
+  if((pairInfo.quote||"").toUpperCase()!="SOL")throw new Error("this token is paired with "+(pairInfo.quote||"something else")+", not SOL — this beta only prices SOL pairs");
   ev.sort((a,b)=>a.t-b.t);
   const buys=ev.filter(e=>e.dTok>0);if(!buys.length)throw new Error("no buys of this token found, only sells or transfers");
   const from=buys[0].t,entryPriceSol=-buys[0].dSol/buys[0].dTok;
-  const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
+  const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${pairInfo.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
   if(!oh||!oh.data||!oh.data.attributes)throw new Error("no price history available for this pool yet");
   let list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]).filter(r=>r[0]>=from-3600);
   if(list.length<3)throw new Error("not enough hourly price history since your first buy to run the comparison");
@@ -271,11 +280,12 @@ async function loadWallet(){
   const curSol=entryPriceSol*prices[prices.length-1],unreal=heldNow?netTok*curSol:0,actual=totalRecv-totalSpent+unreal;
   const T2=[{s:totalSpent,e:eIdx,run:0,p:prices}],res=RULES.map(r=>({r,p:pnl(T2,r)-totalSpent})).sort((a,b)=>b.p-a.p),best=res[0];
   const so=n=>(n<0?"-":"+")+Math.abs(n).toFixed(3)+" SOL";
-  $("axMode").textContent="your wallet";
-  $("ax").innerHTML=`<div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(actual)}" style="display:block;font:800 32px Sora">${so(actual)}</b><span class="mut">${totalSpent.toFixed(3)} SOL in${heldNow?", still holding part":", fully closed"}</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 32px Sora">${so(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
+  $("axMode").textContent=fallbackNote?"your wallet · $"+(pairInfo.sym||"?"):"your wallet";
+  $("ax").innerHTML=`${fallbackNote?`<div class="it info"><b>${fallbackNote}</b><span class="mut">Most recently traded: $${pairInfo.sym||"?"} ${pairInfo.name?"("+pairInfo.name+")":""}</span></div>`:""}
+  <div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(actual)}" style="display:block;font:800 32px Sora">${so(actual)}</b><span class="mut">${totalSpent.toFixed(3)} SOL in${heldNow?", still holding part":", fully closed"}</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 32px Sora">${so(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
   <div class="card tw"><table><tr><th>Exit rule</th><th>P&L</th><th>vs actual</th></tr>${res.map(x=>`<tr><td>${x.r.name}</td><td class="${cls(x.p)}">${so(x.p)}</td><td class="${cls(x.p-actual)}">${so(x.p-actual)}</td></tr>`).join("")}</table></div>
-  <div class="it info"><b>How this was built</b><span class="mut">Pulled from your wallet's real token-balance changes on this mint, priced with real hourly candles since your first buy. Multiple buys/sells are combined into one position, and this assumes SOL's own USD price stayed roughly flat during your hold — usually fine over hours to a couple days. Beta: a best-effort read of on-chain data, not tax or accounting output.</span></div>`;
-  $("waSt").textContent="Loaded "+ev.length+" balance-changing transactions on this token since "+new Date(from*1e3).toLocaleString()+"."
+  <div class="it info"><b>How this was built</b><span class="mut">Pulled from your wallet's real token-balance changes on $${pairInfo.sym||"this token"}, priced with real hourly candles since your first buy. Multiple buys/sells are combined into one position, and this assumes SOL's own USD price stayed roughly flat during your hold — usually fine over hours to a couple days. Beta: a best-effort read of on-chain data, not tax or accounting output.</span></div>`;
+  $("waSt").textContent="Loaded "+ev.length+" balance-changing transactions on $"+(pairInfo.sym||"this token")+" since "+new Date(from*1e3).toLocaleString()+"."
  }catch(e){$("waSt").textContent="Could not build your real exit history: "+e.message+". You can still browse the sample wallet above."}
 }
 
@@ -307,7 +317,7 @@ async function runStrat(){
   const list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]);
   if(list.length<5)throw new Error("not enough price history yet for this pool");
   const base=list[0][4],prices=list.map(r=>r[4]/base);
-  const holdRes=RULES.map(r=>({name:r.name,rule:r,ret:sim([{s:1,e:prices.length-1,run:0,p:prices}],r)-1})).sort((a,b)=>b.ret-a.ret);
+  const holdRes=RULES.map(r=>({name:r.name,rule:r,ret:sim({s:1,e:prices.length-1,run:0,p:prices},r)-1})).sort((a,b)=>b.ret-a.ret);
   const dipRes=DIPS.map(r=>({name:r.name,...dipScalp(prices,r)}));
   const bestHold=holdRes[0],bestDip=dipRes.filter(d=>d.entered).sort((a,b)=>b.ret-a.ret)[0],bestHoldExit=simMark(prices,bestHold.rule);
   const bsr=mk.buys!=null&&mk.sells!=null?mk.buys/(mk.sells||1):null;
