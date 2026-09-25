@@ -44,10 +44,15 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;p
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .dot.live{animation:pulse 1.4s ease-in-out infinite;background:var(--ok)}
+.bblwrap{overflow:hidden;position:relative;background:var(--s2);border-radius:14px}
+.bbl{transition:opacity .2s}.bbl:hover{opacity:.85;cursor:pointer}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sm{padding:6px 12px;font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;font:700 12px "DM Sans";padding:4px 10px;border-radius:99px;background:var(--s2);border:1px solid var(--line)}
 footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;color:var(--mut);font-size:13px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style></head><body>
-<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Position Manager</a><a href="#strat">Strategy Lab</a><a href="#check">Gut Check</a><a href="#liq">Exit Liquidity</a><a href="#radar">Volume Radar</a><a href="#hot">Hot Tokens</a><a href="#watch">Watchlist</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a></div></header>
+<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#dev">Deployer Check</a><a href="#analyzer">Position Manager</a><a href="#strat">Strategy Lab</a><a href="#compare">Compare</a><a href="#check">Gut Check</a><a href="#liq">Exit Liquidity</a><a href="#radar">Volume Radar</a><a href="#hot">Hot Tokens</a><a href="#watch">Watchlist + Alerts</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a></div></header>
 <main class="w">
 
 <section class="hero" id="scan">
@@ -61,9 +66,16 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <details class="card" id="man"><summary>Adjust or enter values manually</summary><label style="max-width:220px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="advMode" style="width:auto" onchange="rug()"> Advanced mode (more signals, stricter scoring)</span></label><div class="row" id="rugIn"></div><div class="row" id="rugInAdv" style="display:none"></div></details>
 </section>
 
+<section id="dev"><h2>Deployer Check <span class="pill">who made this, and what else have they made</span></h2>
+<p class="sub">The single question that matters most and that no chart shows you: is the wallet that created this token a first-timer, or a serial deployer who has done this before? Fills in automatically after you scan a token above.</p>
+<div class="card"><div class="row" style="align-items:end"><label>Creator wallet<input id="devAddr" placeholder="Scan a token above to auto-fill" readonly></label><button class="btn g" style="flex:none" onclick="loadDeployer()">Check deployer</button></div>
+<p class="mut" id="devSt" style="margin:10px 0 0">Scan a token above first — this reads the creator wallet straight from that report.</p></div>
+<div id="devOut"></div></section>
+
 <section id="analyzer"><h2>Position Manager <span class="pill" style="color:#ffc44d;border-color:#ffc44d">premium · free in beta</span></h2>
 <p class="sub">Track every open bag in one place: live P&amp;L, how concentrated your risk is, and a plain read on what your portfolio is actually telling you. No wallet connection — you enter what you paid, prices update from the market.</p>
 <div class="card"><div class="row" style="align-items:end"><label>Token address<input id="posMint" placeholder="Token address (Solana)"></label><label>Your entry market cap<input id="posEntryMc" placeholder="e.g. 1.2M" inputmode="decimal"></label><label>Position size (USD)<input id="posSize" type="number" placeholder="500"></label><button class="btn g" style="flex:none" onclick="posFillFromScan()">Use scanned token</button><button class="btn" style="flex:none" onclick="addPosition()">Add position</button></div>
+<div class="btnrow"><button class="btn g sm" onclick="exportCSV('pos')">⬇ Export CSV</button></div>
 <p class="mut" id="posSt" style="margin:10px 0 0">Scan a token above, then add it here to start tracking, or paste any address directly.</p></div>
 <div id="posSummary"></div><div id="posOut"></div></section>
 
@@ -72,8 +84,15 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <div class="card"><div class="row" style="align-items:end"><label>Current market cap<input id="sMc" oninput="stratEdit()" inputmode="decimal"></label><label>All-time high market cap<input id="sAth" oninput="stratEdit()" inputmode="decimal"></label><label>Position size (USD)<input id="sSize" type="number" value="500" oninput="stratEdit()"></label><label>Fees + slippage per trade (%)<input id="sCost" type="number" value="2" oninput="stratEdit()"></label><button class="btn g" style="flex:none" onclick="stratFill()">Use scanned token</button></div>
 <p class="mut" id="stratSt" style="margin:10px 0 0">Showing example numbers. Scan a token above and press Use scanned token to load its real market cap and high.</p></div>
 <div class="card"><b>Start from a plan</b><div class="row" id="stratPre" style="margin-top:10px"></div></div>
+<div class="card"><div class="row" style="align-items:center;justify-content:space-between"><b>🤖 AI Coach <span class="pill">beta</span></b><button class="btn g sm" onclick="aiCoach()" id="aiBtn">Get a second opinion on this plan</button></div><div id="aiOut" style="margin-top:10px"></div></div>
 <div class="card"><b>Your plan</b><p class="mut" style="margin:2px 0 10px">Type market caps like 1.5M or 800K. Leave the optional boxes empty if you don't need them.</p><div class="row"><label>Buy at<input id="sE1" oninput="stratEdit()" inputmode="decimal"></label><label>Second buy (optional)<input id="sE2" oninput="stratEdit()" inputmode="decimal"></label><label>Sell at<input id="sT1" oninput="stratEdit()" inputmode="decimal"></label><label>Second sell (optional)<input id="sT2" oninput="stratEdit()" inputmode="decimal"></label><label>Stop-loss at<input id="sSt" oninput="stratEdit()" inputmode="decimal"></label></div></div>
 <div id="stratOut"></div></section>
+
+<section id="compare"><h2>Compare Tokens</h2>
+<p class="sub">Two or three tokens, one table. Useful when you're deciding between a few plays and want the numbers lined up instead of ten browser tabs.</p>
+<div class="card"><div class="row" style="align-items:end"><label>Token A<input id="cmpA" placeholder="Address"></label><label>Token B<input id="cmpB" placeholder="Address"></label><label>Token C (optional)<input id="cmpC" placeholder="Address"></label><button class="btn" style="flex:none" onclick="doCompare()">Compare</button></div>
+<p class="mut" id="cmpSt" style="margin:10px 0 0">Paste 2-3 Solana token addresses.</p></div>
+<div id="cmpOut"></div></section>
 
 <section id="liq"><h2>Exit Liquidity Meter</h2>
 <p class="sub">How much can you actually get out? Auto-fills from a scan. Uses a standard pool model and ignores pool fees.</p>
@@ -83,9 +102,11 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <p class="sub">Not a calculator — a pause button for the moment your brain wants to skip it. Answer honestly, it only talks to you.</p>
 <div class="card"><div class="row" id="gutIn"></div><div id="gutOut" style="margin-top:14px"></div></div></section>
 
-<section id="watch"><h2>Watchlist</h2>
-<p class="sub">Watch before you buy. Pin a token here to see its price, risk grade and volume behavior update on their own, instead of impulse-checking the chart every few minutes.</p>
-<div class="card"><div class="row"><label>Token address<input id="watchMint" placeholder="Token address (Solana)"></label><button class="btn g" style="flex:none;align-self:end" onclick="watchAddScanned()">Watch scanned token</button><button class="btn" style="flex:none;align-self:end" onclick="watchAdd()">Add address</button></div><p class="mut" id="watchSt" style="margin:10px 0 0">Nothing pinned yet.</p></div>
+<section id="watch"><h2>Watchlist + Alerts</h2>
+<p class="sub">Watch before you buy. Pin a token here to see its price, risk grade and volume behavior update on their own, instead of impulse-checking the chart every few minutes. Set a target and this tab will notify you when it hits — no app, no signup.</p>
+<div class="card"><div class="row"><label>Token address<input id="watchMint" placeholder="Token address (Solana)"></label><button class="btn g" style="flex:none;align-self:end" onclick="watchAddScanned()">Watch scanned token</button><button class="btn" style="flex:none;align-self:end" onclick="watchAdd()">Add address</button></div>
+<div class="btnrow"><button class="btn g sm" onclick="enableAlerts()" id="alertBtn">🔔 Enable browser alerts</button><button class="btn g sm" onclick="exportCSV('watch')">⬇ Export CSV</button></div>
+<p class="mut" id="watchSt" style="margin:10px 0 0">Nothing pinned yet.</p></div>
 <div id="watchOut"></div></section>
 
 <section id="learn"><h2>Learn</h2>
@@ -109,7 +130,7 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <div class="card"><button class="btn" onclick="loadHot()">Refresh trending</button><p class="mut" id="hotSt" style="margin:10px 0 0">Loading...</p></div>
 <div id="hotOut"></div></section>
 
-<section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Position Manager is free during beta. Premium is planned to add unlimited tracked positions, price alerts, synced watchlists across devices, unbranded risk cards, and a premium Discord. Core tools stay free either way.</p></div></section>
+<section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Position Manager, on-tab alerts, the bubble map and deployer check are free during beta. Premium is planned to add unlimited tracked positions, push alerts that fire even with the tab closed, synced watchlists across devices, full deployer deploy-history (every token a wallet has ever launched, not just this one), unbranded risk cards, and a premium Discord. Core tools stay free either way.</p></div></section>
 </main>
 <footer><div class="w">Educational what-if tools, not financial advice. Passing a check never means a token is safe. Data from public APIs and may be delayed or wrong. Add your own Terms and Privacy pages before promoting the site.</div></footer>
 <button id="top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top" title="Back to top">↑</button>
@@ -123,7 +144,7 @@ sFm=n=>n>=1e9?"$"+(n/1e9).toFixed(2).replace(/\.?0+$/,"")+"B":n>=1e6?"$"+(n/1e6)
 sFt=n=>sFm(n).slice(1),sNice=n=>+n.toPrecision(2);
 
 /* ---------- Live scan (free public APIs, no keys) ---------- */
-let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""},mk=null,HOLDERS=[],TAGS={};
+let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""},mk=null,HOLDERS=[],TAGS={},CREATOR=null,INSIDER_ADDRS=new Set();
 const j=(u,o)=>fetch(u,o).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()});
 const RPCS=["https://solana-rpc.publicnode.com","https://api.mainnet-beta.solana.com"];
 async function rpc(method,params){let lastErr;for(const ep of RPCS){try{const x=await j(ep,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});if(x.error)throw new Error(x.error.message);return x.result}catch(e){lastErr=e}}throw lastErr}
@@ -131,7 +152,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function scan(){
  const m=$("ca").value.trim();
  if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(m)){$("st").textContent="That does not look like a Solana address (32 to 44 letters and numbers).";return}
- $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];INSIGHT=[];TOKX={img:null,sym:"",name:""};HOLDERS=[];const log=[],src=[];mk=null;let ok=false;
+ $("st").textContent="Scanning...";$("tok").innerHTML="";LIVE=[];INSIGHT=[];TOKX={img:null,sym:"",name:""};HOLDERS=[];CREATOR=null;INSIDER_ADDRS=new Set();if($("devAddr"))$("devAddr").value="";$("devOut").innerHTML="";const log=[],src=[];mk=null;let ok=false;
  // 1) market data: DexScreener, then GeckoTerminal
  try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+m);if(!Array.isArray(d)||!d.length)throw new Error("no pairs found");
   const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
@@ -156,10 +177,12 @@ async function scan(){
   if(R.creatorBalance&&R.token&&R.token.supply)$("dev").value=Math.round(R.creatorBalance/R.token.supply*1000)/10;
   $("tax").value=(R.transferFee&&R.transferFee.pct)||0;
   LIVE=(R.risks||[]).map(x=>({sev:x.level=="danger"?"bad":x.level=="warn"?"warn":"ok",t:"Flagged: "+x.name,d:x.description||""}));ok=true;src.push("RugCheck");
+  CREATOR=R.creator||R.token?.creator||null;if($("devAddr")){$("devAddr").value=CREATOR||"Not reported for this token";if(CREATOR)loadDeployer()}
   TOKX.img=R.tokenMeta?.image||R.fileMeta?.image||null;TOKX.sym=R.tokenMeta?.symbol||mk?.sym||"";TOKX.name=R.tokenMeta?.name||mk?.name||"";
   const insN=(R.insiderNetworks||[]).length,gi=R.graphInsidersDetected||0;
   if($("insiders"))$("insiders").value=gi||insN||0;
   if(insN||gi)INSIGHT.push({t:(gi||insN)+" linked wallet"+((gi||insN)>1?"s":"")+" found (insider network)",d:"RugCheck's wallet-graph analysis found wallets that were funded together or trade in sync, likely one person or team behind several \"different\" holders. No price chart shows you this."});
+  try{(R.insiderNetworks||[]).forEach(net=>(net.wallets||net.holders||[]).forEach(w=>INSIDER_ADDRS.add(w.address||w.wallet||w)))}catch(e){}
   if(R.totalHolders)INSIGHT.push({t:R.totalHolders+" total holders",d:"How many wallets hold this token, from RugCheck's index."});
   if(R.score!=null)INSIGHT.push({t:"RugCheck score: "+R.score,d:"RugCheck's own composite risk score, for a second opinion alongside ours."})}catch(e){log.push("RugCheck: "+e.message)}
  if(!ok)try{const a=((await rpc("getAccountInfo",[m,{encoding:"jsonParsed"}])).value||{}).data;const i=a&&a.parsed&&a.parsed.info;if(!i)throw new Error("not a token mint");
@@ -198,7 +221,9 @@ function rug(){const g=id=>$(id).value,top=num("top"),dev=num("dev"),tax=num("ta
  $("rugOut").innerHTML=`<div class="card"><div class="ring"><svg width="110" height="110" viewBox="0 0 42 42"><circle cx="21" cy="21" r="16" fill="none" stroke="#292651" stroke-width="4"/><circle cx="21" cy="21" r="16" fill="none" stroke="${gr[2]}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${s} 100.5" transform="rotate(-90 21 21)" pathLength="100.5"/><text x="21" y="24.5" text-anchor="middle" fill="#eceaff" font-size="11" font-weight="800" font-family="Sora">${s}</text></svg>
  <div><b style="font:800 24px Sora" class="${gr[1]}">${gr[0]}</b><div class="mut">Score out of 100. Passing does not mean safe: hidden bundles and coordinated dumps are not covered.</div><button class="btn g" style="margin-top:10px" onclick="card()">Preview report card</button></div></div>
  ${RC.I.map(i=>`<div class="it ${i.sev}"><b>${i.t}</b><span class="mut">${i.d}</span></div>`).join("")}
- ${HOLDERS.length?`<div class="card tw" style="margin-top:10px"><b>Top holders <span class="pill">your own wallet tags, not verified identities</span></b><table><tr><th>Wallet</th><th>%</th><th>Your tag</th><th></th></tr>${HOLDERS.map((h,i)=>`<tr><td class="mut">${h.addr?h.addr.slice(0,4)+"…"+h.addr.slice(-4):"n/a"}</td><td>${h.pct.toFixed(1)}%</td><td id="htag${i}">${loadTags()[h.addr]||"—"}</td><td>${h.addr?`<button class="btn g" style="padding:4px 10px;font-size:12px" onclick="tagPrompt('${h.addr}',${i})">Tag</button>`:""}</td></tr>`).join("")}</table><p class="mut" style="margin-top:8px">Tags are labels you add yourself (saved on this device) — e.g. a wallet you know from elsewhere. We never guess whose wallet this is.</p></div>`:""}
+ ${HOLDERS.length?`<div class="card tw" style="margin-top:10px"><b>Top holders <span class="pill">your own wallet tags, not verified identities</span></b>
+ <div style="margin:10px 0">${bubbleMap(HOLDERS)}</div>
+ <table><tr><th>Wallet</th><th>%</th><th>Your tag</th><th></th></tr>${HOLDERS.map((h,i)=>`<tr><td class="mut">${h.addr?h.addr.slice(0,4)+"…"+h.addr.slice(-4):"n/a"}${INSIDER_ADDRS.has(h.addr)?' <span class="pill bad" style="border-color:var(--bad)">clustered</span>':''}</td><td>${h.pct.toFixed(1)}%</td><td id="htag${i}">${loadTags()[h.addr]||"—"}</td><td>${h.addr?`<button class="btn g" style="padding:4px 10px;font-size:12px" onclick="tagPrompt('${h.addr}',${i})">Tag</button>`:""}</td></tr>`).join("")}</table><p class="mut" style="margin-top:8px">Tags are labels you add yourself (saved on this device) — e.g. a wallet you know from elsewhere. Red bubbles/rows are wallets RugCheck's graph flagged as linked. We never guess whose wallet this is beyond that.</p></div>`:""}
  <div id="cardPrevWrap" style="display:none;margin-top:14px"><canvas id="cardCanvas" style="width:100%;max-width:480px;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto"></canvas><div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="dlCard()">Download PNG</button></div></div></div>`}
 document.querySelectorAll("#rugIn select,#rugIn input").forEach(e=>e.oninput=rug);rug();
 function loadTags(){try{return JSON.parse(localStorage.getItem("tt_tags")||"{}")}catch(e){return{}}}
@@ -379,11 +404,20 @@ function gutCheck(){
 gutCheck();
 
 /* ---------- Learn ---------- */
-const G=[["Mint authority","Permission to create new tokens. If active, supply can be inflated any time."],["Freeze authority","Permission to freeze wallets. If active, the dev can block your sells."],["LP (liquidity pool)","The pool of tokens and SOL that trades run against. No pool, no exit."],["Burned LP","Liquidity sent to an address nobody controls, so the pool can never be pulled."],["Locked LP","Liquidity held by a lock contract until a set date. Check the date."],["Bundle","Many wallets funded by one person buying at launch, then dumping on real buyers."],["Honeypot","A token you can buy but not sell."],["Slippage","The gap between the price you expected and the price you got."],["Price impact","How much your own trade moves the price. Bigger in thin pools."],["Sell tax","A fee taken on each sale, set by the token contract."],["Exit liquidity","Buyers available for you to sell to. If you are early, late buyers are it."],["Round trip","Buying and later selling one position. Used to score each trade."],["Market cap vs FDV","Market cap counts circulating supply; FDV counts every token that will ever exist. A huge gap between them means heavy future unlocks or team supply still to come."],["ATH (all-time high)","The highest market cap or price a token has ever reached. Buying near the ATH means every past buyer is now able to sell at a profit into you."],["Bonding curve","The pricing formula many new launches (like pump.fun) start on before a real liquidity pool exists. Price rises mechanically with each buy until the token \"graduates.\""],["Graduate / migrate","When a bonding-curve token earns enough volume to move to a real DEX pool. Many tokens die exactly at or just after this point."],["Sniper","A bot or wallet built to buy in the very first block(s) of a launch, often reselling into the first wave of real buyers within seconds."],["Insider cluster","A group of wallets that were funded from the same source or trade in sync, usually one person or team controlling several \"different\" holders."],["Wash trading","Trading between wallets the same person or team controls, to fake volume and make a dead token look active."],["CTO (community takeover)","A token whose original dev disappears or is pushed out and a group of holders informally takes over marketing. Sometimes a real revival, often just a way to keep a dead chart alive."],["Diamond hands / paper hands","Slang for holding through volatility (diamond) versus selling at the first sign of a drop or profit (paper). Neither is automatically correct — the plan should decide it, not the label."],["Degen / ape","Slang for buying something fast, on hype, with little research. Fine to know you're doing it; risky to size a position like you did research when you didn't."]];
-const PAT=[["Liquidity pull","Dev removes the pool. Price goes to zero in one transaction."],["Slow bleed","Insiders sell small amounts for days while the chart looks healthy."],["Bundled launch","Insider wallets buy in the first blocks, hold the supply, then dump on newcomers."],["Tax trap","Sell tax is raised after launch until selling loses nearly everything."],["Fake copycat","Same name and image as a hot token, different contract."],["Sniper-dominated supply","Bots buy most of the early supply in the first blocks, then resell into the crowd the moment real buyers show up, before most people can even load the chart."],["Fake CTO revival","A dead token gets a new logo and a \"community takeover\" narrative to attract a fresh wave of buyers, with no real change to holder concentration or contract risk."],["Wash-traded pump","Coordinated wallets trade back and forth to inflate 24h volume and make a thin, risky pool look active and in-demand."],["Upgradeable contract trap","The contract includes an admin function (often disguised) that can change tax, disable selling, or mint more supply after launch, even if it looks clean on day one."]];
+const G=[["Mint authority","Permission to create new tokens. If active, supply can be inflated any time."],["Freeze authority","Permission to freeze wallets. If active, the dev can block your sells."],["LP (liquidity pool)","The pool of tokens and SOL that trades run against. No pool, no exit."],["Burned LP","Liquidity sent to an address nobody controls, so the pool can never be pulled."],["Locked LP","Liquidity held by a lock contract until a set date. Check the date."],["Bundle","Many wallets funded by one person buying at launch, then dumping on real buyers."],["Honeypot","A token you can buy but not sell."],["Slippage","The gap between the price you expected and the price you got."],["Price impact","How much your own trade moves the price. Bigger in thin pools."],["Sell tax","A fee taken on each sale, set by the token contract."],["Exit liquidity","Buyers available for you to sell to. If you are early, late buyers are it."],["Round trip","Buying and later selling one position. Used to score each trade."],["Market cap vs FDV","Market cap counts circulating supply; FDV counts every token that will ever exist. A huge gap between them means heavy future unlocks or team supply still to come."],["ATH (all-time high)","The highest market cap or price a token has ever reached. Buying near the ATH means every past buyer is now able to sell at a profit into you."],["Bonding curve","The pricing formula many new launches (like pump.fun) start on before a real liquidity pool exists. Price rises mechanically with each buy until the token \"graduates.\""],["Graduate / migrate","When a bonding-curve token earns enough volume to move to a real DEX pool. Many tokens die exactly at or just after this point."],["Sniper","A bot or wallet built to buy in the very first block(s) of a launch, often reselling into the first wave of real buyers within seconds."],["Insider cluster","A group of wallets that were funded from the same source or trade in sync, usually one person or team controlling several \"different\" holders."],["Wash trading","Trading between wallets the same person or team controls, to fake volume and make a dead token look active."],["CTO (community takeover)","A token whose original dev disappears or is pushed out and a group of holders informally takes over marketing. Sometimes a real revival, often just a way to keep a dead chart alive."],["Diamond hands / paper hands","Slang for holding through volatility (diamond) versus selling at the first sign of a drop or profit (paper). Neither is automatically correct — the plan should decide it, not the label."],["Degen / ape","Slang for buying something fast, on hype, with little research. Fine to know you're doing it; risky to size a position like you did research when you didn't."],
+["Bundler wallet","A wallet that bought in the same block or Jito bundle as the token's creation, usually to grab a large chunk of early supply before the public can."],
+["Serial deployer","A wallet that has created many tokens before. Not automatically bad, but a wallet with a long trail of dead or rugged tokens is a strong warning."],
+["Smart money","Wallets a community has identified as historically early and profitable on new launches. Copying them isn't a strategy by itself — they take losses too."],
+["Copy trading","Automatically mirroring another wallet's buys and sells. You inherit their timing and their risk, including the trades that don't work out."],
+["KOL wallet","A wallet linked to a crypto influencer ('key opinion leader'). Their buy can move a chart on attention alone, and their sell often isn't announced."],
+["Bubble map","A holder chart where each wallet is a circle sized by how much it owns. Clustered same-size bubbles that appeared together are a bundle, visually."]];
+const PAT=[["Liquidity pull","Dev removes the pool. Price goes to zero in one transaction."],["Slow bleed","Insiders sell small amounts for days while the chart looks healthy."],["Bundled launch","Insider wallets buy in the first blocks, hold the supply, then dump on newcomers."],["Tax trap","Sell tax is raised after launch until selling loses nearly everything."],["Fake copycat","Same name and image as a hot token, different contract."],["Sniper-dominated supply","Bots buy most of the early supply in the first blocks, then resell into the crowd the moment real buyers show up, before most people can even load the chart."],["Fake CTO revival","A dead token gets a new logo and a \"community takeover\" narrative to attract a fresh wave of buyers, with no real change to holder concentration or contract risk."],["Wash-traded pump","Coordinated wallets trade back and forth to inflate 24h volume and make a thin, risky pool look active and in-demand."],["Upgradeable contract trap","The contract includes an admin function (often disguised) that can change tax, disable selling, or mint more supply after launch, even if it looks clean on day one."],
+["Serial rugger","The creator wallet has a trail of previous tokens that all lost their liquidity shortly after launch. Same playbook, new ticker. Check Deployer Check before you check the chart."],
+["Influencer pump and dump","A KOL wallet buys early, promotes it publicly to their following, then sells into the attention they generated — the newest buyers are often left holding the top."]];
 const RULES2=["Decide your exit, target and stop, before you buy, not after.","Only risk an amount that would not change your week if it went to zero.","Take at least a partial profit on any big winner. A free roll beats a hope.","Never average down on a token whose chart matches an active rug pattern.","A passing score is a second opinion, not a green light. Read the flags yourself.","Trade less right after a loss, not more.","Write down why you're in a trade in one sentence before you enter it.","Check liquidity and holder concentration before you check the chart's shape."];
 const MISTAKES=[["Buying because it's already pumping","By the time a pump is obvious, early buyers are often the ones selling into you. Chasing a green candle is buying someone else's exit."],["Moving your stop-loss further away mid-trade","If the plan was -30% and you move it to -60% because you don't want to be wrong, you've stopped managing risk and started hoping."],["Never taking any profit","Paper gains aren't real until part of the position is sold. Selling half at 2x banks your entry back, so the rest is a free roll."],["Averaging down without a new reason","Buying more of something that's falling only makes sense if something about the token actually changed. Otherwise it's doubling the bet, not managing it."],["Revenge trading after a loss","A new bet to win back an old loss usually means worse sizing and no real thesis, and it tends to compound the damage rather than fix it."],["Trusting a call without checking it yourself","Someone else's position, size and exit timing aren't yours. Scan it before you size in."],["Sizing every trade the same","A high-conviction setup you actually researched and a random gamble shouldn't get the same amount of your account."],["Checking the chart every few minutes","Constant checking turns a plan into a reaction. A set target and stop don't need to be watched minute to minute."],["No plan before entry","If you can't say your target and your invalidation point in one sentence before buying, that's a hope, not a plan."],["Believing this time is different","Every rug and every pump-and-dump looked, in the moment, like the exception. The base rate for new memecoins going to zero stays high regardless of how a chart feels."]];
-const RES=[["RugCheck","Automated risk report and holder analysis for Solana tokens.","https://rugcheck.xyz"],["DexScreener","Live charts, pairs and trending tokens across chains.","https://dexscreener.com"],["GeckoTerminal","On-chain charts and pool data, including pools minutes old.","https://www.geckoterminal.com"],["Birdeye","Solana-focused charts plus holder and wallet breakdowns.","https://birdeye.so"],["Solscan","Look up any wallet or contract straight from the chain.","https://solscan.io"],["Jupiter","The main swap aggregator for trading on Solana.","https://jup.ag"]];
+const RES=[["RugCheck","Automated risk report and holder analysis for Solana tokens.","https://rugcheck.xyz"],["DexScreener","Live charts, pairs and trending tokens across chains.","https://dexscreener.com"],["GeckoTerminal","On-chain charts and pool data, including pools minutes old.","https://www.geckoterminal.com"],["Birdeye","Solana-focused charts plus holder and wallet breakdowns.","https://birdeye.so"],["Solscan","Look up any wallet or contract straight from the chain.","https://solscan.io"],["Jupiter","The main swap aggregator for trading on Solana.","https://jup.ag"],
+["Bubblemaps","Visual wallet-cluster maps for spotting bundled supply at a glance.","https://bubblemaps.io"]];
 
 function gl(){const q=$("gq").value.toLowerCase();$("gl").innerHTML=G.filter(g=>(g[0]+g[1]).toLowerCase().includes(q)).map(g=>`<div class="it"><b>${g[0]}</b><span class="mut">${g[1]}</span></div>`).join("")||"<p class='mut'>No match.</p>"}
 $("gq").oninput=gl;gl();$("pat").innerHTML=PAT.map(p=>`<div class="it warn"><b>${p[0]}</b><span class="mut">${p[1]}</span></div>`).join("");
@@ -464,6 +498,115 @@ async function loadHot(){$("hotSt").textContent="Loading trending Solana pools..
    ${h.flags.length?`<div style="margin-top:8px">${h.flags.map(f=>`<span class="pill ${f[0]}" style="margin:2px 4px 0 0;border-color:currentColor">${f[1]}</span>`).join("")}</div>`:""}</div>`}).join("");
  }catch(e){$("hotSt").textContent="Could not load trending pools: "+e.message}}
 function scanFromHot(mint){$("ca").value=mint;location.hash="#scan";scan()}
+
+/* ---------- Bubble map ---------- */
+function bubbleMap(holders){
+ const W=700,H=230,pad=6,rows=[[]];let x=pad,y=pad,rowH=0,maxR=0;
+ const items=holders.slice(0,15).map((h,i)=>({...h,r:Math.max(9,Math.min(60,Math.sqrt(Math.max(h.pct,0.3))*11)),i}));
+ items.forEach(it=>{if(x+it.r*2+4>W){x=pad;y+=rowH+4;rows.push([]);rowH=0}it.cx=x+it.r;it.cy=0;x+=it.r*2+4;rowH=Math.max(rowH,it.r*2);maxR=Math.max(maxR,it.r);rows[rows.length-1].push(it)});
+ let cy=pad;rows.forEach(r=>{const h=Math.max(...r.map(it=>it.r*2),0);r.forEach(it=>it.cy=cy+h/2);cy+=h+4});
+ const totalH=Math.max(cy+pad,120);
+ const col=it=>INSIDER_ADDRS.has(it.addr)?"var(--bad)":it.i==0?"var(--p)":it.i<3?"var(--v)":"var(--ok)";
+ return `<svg viewBox="0 0 ${W} ${totalH}" style="width:100%;height:auto;display:block" class="bblwrap">
+ ${items.map(it=>`<circle class="bbl" cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${col(it)}" opacity="${INSIDER_ADDRS.has(it.addr)?.85:.55+Math.min(.3,it.pct/100)}" stroke="${col(it)}" stroke-width="1.5"><title>${it.addr||"n/a"} · ${it.pct.toFixed(1)}%${INSIDER_ADDRS.has(it.addr)?" · flagged as clustered":""}</title></circle>
+ ${it.r>=16?`<text x="${it.cx}" y="${it.cy+4}" text-anchor="middle" font-size="${Math.min(13,it.r*.55)}" font-weight="700" fill="#0a0913" font-family="DM Sans">${it.pct.toFixed(0)}%</text>`:""}`).join("")}
+ </svg><p class="mut" style="font-size:12px;margin:4px 0 0">Pink = #1 holder · purple = #2-3 · green = other top holders · red = flagged as a clustered/linked wallet. Size = share of supply. Hover a bubble for the address.</p>`}
+
+/* ---------- Deployer Check ---------- */
+async function loadDeployer(){
+ const addr=CREATOR;if(!addr){$("devSt").textContent="Scan a token first — its RugCheck report didn't include a creator address for this one.";return}
+ $("devSt").textContent="Checking wallet age and activity...";$("devOut").innerHTML="";
+ try{
+  const sigs=await rpc("getSignaturesForAddress",[addr,{limit:1000}]);
+  const n=sigs.length,oldest=n?sigs[n-1]:null,newest=n?sigs[0]:null,
+  ageD=oldest&&oldest.blockTime?(Date.now()/1000-oldest.blockTime)/86400:null,
+  recentD=newest&&newest.blockTime?(Date.now()/1000-newest.blockTime)/86400:null;
+  const flags=[];
+  if(ageD!=null&&ageD<3)flags.push(["bad","Wallet is brand new ("+ageD.toFixed(1)+" days old)","A creator wallet with almost no history is either someone's very first launch or a fresh burner made specifically to deploy and disappear."]);
+  else if(ageD!=null&&ageD<14)flags.push(["warn","Wallet is under 2 weeks old ("+ageD.toFixed(0)+" days)","Still early to have a track record either way."]);
+  else if(ageD!=null)flags.push(["ok","Wallet has history ("+(ageD>365?(ageD/365).toFixed(1)+" years":ageD.toFixed(0)+" days")+" old)","At least this isn't a same-day burner wallet, though age alone doesn't prove intent."]);
+  if(n>=950)flags.push(["warn","1,000+ transactions on record","High activity. Could be a normal trader, or a wallet that deploys and manages many tokens. Check its deploy history on Solscan to be sure."]);
+  $("devSt").textContent="Checked "+addr.slice(0,4)+"…"+addr.slice(-4)+".";
+  $("devOut").innerHTML=`<div class="card"><div class="grid">
+  <div class="stat"><b>${n>=1000?"1000+":n}</b><span>Transactions seen</span></div>
+  <div class="stat"><b>${ageD!=null?(ageD>365?(ageD/365).toFixed(1)+"y":ageD.toFixed(0)+"d"):"n/a"}</b><span>Wallet age</span></div>
+  <div class="stat"><b>${recentD!=null?(recentD<1?"<1d":recentD.toFixed(0)+"d"):"n/a"}</b><span>Last active</span></div></div>
+  ${flags.map(f=>`<div class="it ${f[0]}"><b>${f[1]}</b><span class="mut">${f[2]}</span></div>`).join("")}
+  <p class="mut" style="margin-top:10px">This is transaction-count history, a rough proxy for "brand new burner vs. wallet with a past" — not a list of every token this wallet has deployed. For that, open the wallet on Solscan or RugCheck directly.</p>
+  <div class="btnrow"><a class="btn g sm" href="https://solscan.io/account/${addr}" target="_blank" rel="noopener">Open on Solscan ↗</a><a class="btn g sm" href="https://rugcheck.xyz/wallet/${addr}" target="_blank" rel="noopener">Open on RugCheck ↗</a></div></div>`
+ }catch(e){$("devSt").textContent="Could not load wallet activity: "+e.message+". You can still look it up manually.";
+  $("devOut").innerHTML=`<div class="card btnrow"><a class="btn g sm" href="https://solscan.io/account/${addr}" target="_blank" rel="noopener">Open ${addr.slice(0,4)}…${addr.slice(-4)} on Solscan ↗</a></div>`}}
+
+/* ---------- Compare Tokens ---------- */
+async function cmpFetch(m){
+ try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+m);const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
+  const liq=p.liquidity?.usd||0,vol=p.volume?.h24||0,ch=p.priceChange?.h24,ageH=p.pairCreatedAt?(Date.now()-p.pairCreatedAt)/36e5:null;
+  const h=heuristic({liq,vol,ch,ageH});
+  return{ok:true,mint:m,sym:p.baseToken.symbol,name:p.baseToken.name,img:p.info?.imageUrl||null,mc:p.marketCap||p.fdv||0,liq,vol,ch,ageH,h}
+ }catch(e){return{ok:false,mint:m}}}
+async function doCompare(){
+ const addrs=[$("cmpA").value.trim(),$("cmpB").value.trim(),$("cmpC").value.trim()].filter(a=>/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a));
+ if(addrs.length<2){$("cmpSt").textContent="Enter at least 2 valid Solana token addresses.";return}
+ $("cmpSt").textContent="Comparing...";$("cmpOut").innerHTML="";
+ const rows=await Promise.all(addrs.map(cmpFetch));
+ $("cmpSt").textContent="Compared "+rows.filter(r=>r.ok).length+" of "+rows.length+" tokens.";
+ const rowDef=[["Market cap",r=>usd(r.mc)],["Liquidity",r=>usd(r.liq)],["24h volume",r=>usd(r.vol)],["24h change",r=>r.ch!=null?(r.ch>=0?"+":"")+r.ch.toFixed(0)+"%":"n/a"],["Age",r=>r.ageH!=null?(r.ageH<48?r.ageH.toFixed(0)+"h":(r.ageH/24).toFixed(0)+"d"):"n/a"],["Quick read",r=>r.h.grade[0]+" ("+r.h.s+"/100)"]];
+ $("cmpOut").innerHTML=`<div class="card tw"><table><tr><th>Token</th>${rows.map(r=>`<th>${r.ok?"$"+r.sym:"failed"}</th>`).join("")}</tr>
+ ${rowDef.map(rd=>`<tr><td class="mut">${rd[0]}</td>${rows.map(r=>`<td>${r.ok?rd[0]=="Quick read"?`<span class="${r.h.grade[1]}">${rd[1](r)}</span>`:rd[1](r):"—"}</td>`).join("")}</tr>`).join("")}
+ <tr><td class="mut">Scan it</td>${rows.map(r=>`<td>${r.ok?`<button class="btn g sm" onclick="scanFromHot('${r.mint}')">Scan</button>`:""}</td>`).join("")}</tr></table>
+ <p class="mut" style="margin-top:8px">Quick read uses the same fast heuristic as Hot Tokens — liquidity, volume and age only. Run each through the full Scan above for the real rug check.</p></div>`}
+
+/* ---------- CSV export ---------- */
+function csvDl(name,rows){const csv=rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=name;a.click()}
+function exportCSV(which){
+ if(which=="watch"){const list=loadWatch();if(!list.length)return;csvDl("trench-watchlist.csv",[["mint"],...list.map(m=>[m])])}
+ if(which=="pos"){const list=loadPositions();if(!list.length)return;csvDl("trench-positions.csv",[["mint","symbol","entry_mc","size_usd","added"],...list.map(p=>[p.mint,p.sym,p.entryMc,p.size,new Date(p.addedAt).toISOString()])])}}
+
+/* ---------- Alerts ---------- */
+function loadAlerts(){try{return JSON.parse(localStorage.getItem("tt_alerts")||"{}")}catch(e){return{}}}
+function saveAlerts(a){localStorage.setItem("tt_alerts",JSON.stringify(a))}
+function enableAlerts(){
+ if(!("Notification" in window)){$("watchSt").textContent="Your browser doesn't support notifications.";return}
+ Notification.requestPermission().then(p=>{$("alertBtn").textContent=p=="granted"?"🔔 Alerts on":"🔕 Notifications blocked";if(p=="granted")$("watchSt").textContent="Alerts on. Set a target % on any watched token and this tab will notify you when it's crossed."})}
+function setAlert(m){const cur=loadAlerts();const v=prompt("Notify me when this token's market cap moves by this % from now (e.g. 50 for +50%, -30 for -30%):",cur[m]?.pct||"50");if(v===null)return;
+ const pct=+v;if(!pct){delete cur[m];saveAlerts(cur);return}const list=loadWatch();cur[m]={pct,baseline:null,fired:false};saveAlerts(cur);renderWatch()}
+function checkAlerts(rows){
+ if(!("Notification" in window)||Notification.permission!=="granted")return;
+ const al=loadAlerts();let changed=false;
+ rows.forEach(r=>{const a=al[r.mint];if(!a||r.err||!r.mcap)return;
+  if(a.baseline==null){a.baseline=r.mcap;changed=true;return}
+  const chg=(r.mcap/a.baseline-1)*100;
+  if(!a.fired&&((a.pct>0&&chg>=a.pct)||(a.pct<0&&chg<=a.pct))){
+   new Notification("$"+r.sym+" alert",{body:"Market cap moved "+(chg>=0?"+":"")+chg.toFixed(0)+"% to "+sFm(r.mcap)});a.fired=true;changed=true}});
+ if(changed)saveAlerts(al)}
+
+/* ---------- AI Coach ---------- */
+function coachFallback(){
+ const cur=sPm($("sMc").value),ath=sPm($("sAth").value),size=+$("sSize").value||0,
+ E=[$("sE1").value,$("sE2").value].map(v=>sPm(v)).filter(v=>v>0),X=[$("sT1").value,$("sT2").value].map(v=>sPm(v)).filter(v=>v>0).sort((a,b)=>a-b),stop=sPm($("sSt").value);
+ if(!(cur>0&&E.length&&X.length&&size>0))return"Fill in a plan above first — current market cap, a buy level, a sell target and a size.";
+ const avg=E.length/E.reduce((a,e)=>a+1/e,0),dist=ath?((ath-cur)/ath*100):null,rr=stop&&stop<avg?((X[X.length-1]/avg-1))/((avg-stop)/avg):null,notes=[];
+ notes.push("This plan risks about "+size.toLocaleString()+" dollars on a token currently "+(dist!=null?dist.toFixed(0)+"% below its all-time high":"with no known ATH")+".");
+ if(dist!=null&&dist<20)notes.push("It's trading near its high — you'd be one of the few buyers who could still be underwater if it rolls over, since almost everyone else is already in profit and free to sell into you.");
+ if(rr!=null)notes.push("Reward-to-risk on this plan works out to roughly "+rr.toFixed(1)+"-to-1"+(rr<1.3?", which is thin — most traders want at least 1.5-to-1 before the trade is worth the risk of being wrong.":", which is a reasonable ratio if the levels actually hold."));
+ if(!stop)notes.push("There's no stop-loss set. Without one, this plan has no defined point where you admit the idea was wrong.");
+ notes.push("None of this predicts where the price actually goes — it only checks whether the plan's math makes sense.");
+ return notes.join(" ")}
+async function aiCoach(){
+ const btn=$("aiBtn");btn.disabled=true;btn.textContent="Thinking...";
+ const cur=sPm($("sMc").value),ath=sPm($("sAth").value),size=+$("sSize").value||0,
+ E=[$("sE1").value,$("sE2").value].map(v=>sPm(v)).filter(v=>v>0),X=[$("sT1").value,$("sT2").value].map(v=>sPm(v)).filter(v=>v>0),stop=sPm($("sSt").value);
+ if(!(cur>0&&E.length&&X.length&&size>0)){$("aiOut").innerHTML='<div class="card mut">Fill in a plan above first.</div>';btn.disabled=false;btn.textContent="Get a second opinion on this plan";return}
+ const prompt=`A memecoin trader has this plan for a token: current market cap ${sFm(cur)}, all-time high ${ath?sFm(ath):"unknown"}, buy level(s) ${E.map(sFm).join(", ")}, sell target(s) ${X.map(sFm).join(", ")}, stop-loss ${stop?sFm(stop):"none set"}, position size $${size}. In 3-4 blunt, specific sentences, critique this plan like an experienced trader would: point out the single biggest weakness, whether the reward justifies the risk, and one concrete improvement. No disclaimers, no "not financial advice", just the read.`;
+ try{
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,messages:[{role:"user",content:prompt}]})});
+  const d=await r.json();const txt=(d.content||[]).map(c=>c.text||"").join(" ").trim();
+  if(!txt)throw new Error("empty");
+  $("aiOut").innerHTML=`<div class="it info"><b>AI read</b><span class="mut">${txt}</span></div>`;
+ }catch(e){
+  $("aiOut").innerHTML=`<div class="it info"><b>Built-in read</b><span class="mut">${coachFallback()}</span></div><p class="mut" style="margin-top:6px">Live AI commentary only runs while this page is open inside Claude — on your own hosted site it falls back to this rule-based read automatically, same as just now.</p>`}
+ btn.disabled=false;btn.textContent="Get a second opinion on this plan"}
 
 /* ---------- Watchlist ---------- */
 function loadWatch(){try{return JSON.parse(localStorage.getItem("tt_watch")||"[]")}catch(e){return[]}}
