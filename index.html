@@ -47,7 +47,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;p
 footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;color:var(--mut);font-size:13px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style></head><body>
-<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#radar">Volume Radar</a><a href="#hot">Hot Tokens</a></div></header>
+<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Position Manager</a><a href="#strat">Strategy Lab</a><a href="#check">Gut Check</a><a href="#liq">Exit Liquidity</a><a href="#radar">Volume Radar</a><a href="#hot">Hot Tokens</a><a href="#watch">Watchlist</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a></div></header>
 <main class="w">
 
 <section class="hero" id="scan">
@@ -61,12 +61,11 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <details class="card" id="man"><summary>Adjust or enter values manually</summary><label style="max-width:220px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="advMode" style="width:auto" onchange="rug()"> Advanced mode (more signals, stricter scoring)</span></label><div class="row" id="rugIn"></div><div class="row" id="rugInAdv" style="display:none"></div></details>
 </section>
 
-<section id="analyzer"><h2>Exit Analyzer <span class="pill" id="axMode">sample wallet</span></h2>
-<p class="sub">See what you would have made with a better exit plan. Rules only use prices from while you were holding, never the perfect top.</p>
-<div class="card"><div class="row"><label>Your Solana wallet address<input id="wa" placeholder="Wallet address"></label></div>
-<button class="btn" style="margin-top:10px" onclick="loadWallet()">Analyze my real exits on the scanned token</button>
-<p class="mut" id="waSt" style="margin:10px 0 0">Scan a token above to analyze that trade, or just paste a wallet with nothing scanned to see its most recent trade. Beta: reads your last 40 transactions on-chain, so give it a minute.</p></div>
-<div id="ax"></div></section>
+<section id="analyzer"><h2>Position Manager <span class="pill" style="color:#ffc44d;border-color:#ffc44d">premium · free in beta</span></h2>
+<p class="sub">Track every open bag in one place: live P&amp;L, how concentrated your risk is, and a plain read on what your portfolio is actually telling you. No wallet connection — you enter what you paid, prices update from the market.</p>
+<div class="card"><div class="row" style="align-items:end"><label>Token address<input id="posMint" placeholder="Token address (Solana)"></label><label>Your entry market cap<input id="posEntryMc" placeholder="e.g. 1.2M" inputmode="decimal"></label><label>Position size (USD)<input id="posSize" type="number" placeholder="500"></label><button class="btn g" style="flex:none" onclick="posFillFromScan()">Use scanned token</button><button class="btn" style="flex:none" onclick="addPosition()">Add position</button></div>
+<p class="mut" id="posSt" style="margin:10px 0 0">Scan a token above, then add it here to start tracking, or paste any address directly.</p></div>
+<div id="posSummary"></div><div id="posOut"></div></section>
 
 <section id="strat"><h2>Strategy Lab <span class="pill">plan it before you trade it</span></h2>
 <p class="sub">Draw your trade before you take it. Set where you buy, where you sell and where the idea is wrong, then see it on a chart with your risk and reward. Try an example plan, or scan a token above to use its real numbers.</p>
@@ -80,11 +79,21 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <p class="sub">How much can you actually get out? Auto-fills from a scan. Uses a standard pool model and ignores pool fees.</p>
 <div class="card"><div class="row"><label>Pool liquidity (USD, as shown)<input id="L" type="number" value="40000"></label><label>Your bag (USD)<input id="P" type="number" value="2000"></label><label>Biggest holder sells first (USD)<input id="Q" type="number" value="0"></label></div><div id="liqOut" style="margin-top:12px"></div></div></section>
 
-<section id="cost"><h2>Costs and Sizing</h2><p class="sub">Your real break-even, and how big to size a trade.</p>
-<div class="two"><div class="card"><b>Break-even</b><div class="row" id="costIn" style="margin:10px 0"></div><div id="costOut"></div></div>
-<div class="card"><b>Position size</b><div class="row" style="margin:10px 0"><label>Account (USD)<input id="acc" type="number" value="1000"></label><label>Max loss (%)<input id="rk" type="number" value="2"></label><label>Stop distance (%)<input id="sl" type="number" value="35"></label></div><div id="posOut"></div></div></div></section>
+<section id="check"><h2>Gut Check</h2>
+<p class="sub">Not a calculator — a pause button for the moment your brain wants to skip it. Answer honestly, it only talks to you.</p>
+<div class="card"><div class="row" id="gutIn"></div><div id="gutOut" style="margin-top:14px"></div></div></section>
 
-<section id="learn"><h2>Learn</h2><input id="gq" placeholder="Search terms" style="margin-bottom:8px"><div id="gl"></div><h3>Rug patterns to know</h3><div id="pat"></div></section>
+<section id="watch"><h2>Watchlist</h2>
+<p class="sub">Watch before you buy. Pin a token here to see its price, risk grade and volume behavior update on their own, instead of impulse-checking the chart every few minutes.</p>
+<div class="card"><div class="row"><label>Token address<input id="watchMint" placeholder="Token address (Solana)"></label><button class="btn g" style="flex:none;align-self:end" onclick="watchAddScanned()">Watch scanned token</button><button class="btn" style="flex:none;align-self:end" onclick="watchAdd()">Add address</button></div><p class="mut" id="watchSt" style="margin:10px 0 0">Nothing pinned yet.</p></div>
+<div id="watchOut"></div></section>
+
+<section id="learn"><h2>Learn</h2>
+<h3>Trading rules worth keeping</h3><div id="rules"></div>
+<h3>Mistakes that quietly wreck accounts</h3><div id="mistakes"></div>
+<h3>Glossary</h3><input id="gq" placeholder="Search terms" style="margin-bottom:8px"><div id="gl"></div>
+<h3>Rug patterns to know</h3><div id="pat"></div>
+<h3>Useful sites</h3><div id="resources"></div></section>
 
 <section id="play"><h2>Spot the Rug</h2><p class="sub">Fictional tokens. Judge from the stats. Score: <b id="sc">0/0</b></p>
 <label style="max-width:200px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="hardMode" style="width:auto" onchange="ci=0;spot()"> Advanced (harder cases)</span></label>
@@ -100,7 +109,7 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <div class="card"><button class="btn" onclick="loadHot()">Refresh trending</button><p class="mut" id="hotSt" style="margin:10px 0 0">Loading...</p></div>
 <div id="hotOut"></div></section>
 
-<section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Unlimited heavy tools, premium Discord, full Exit Analyzer history from your wallet, unbranded risk cards, saved wallets. Core tools stay free.</p></div></section>
+<section><div class="card"><b>Premium (planned): $5.99/month</b><p class="mut" style="margin:6px 0 0">Position Manager is free during beta. Premium is planned to add unlimited tracked positions, price alerts, synced watchlists across devices, unbranded risk cards, and a premium Discord. Core tools stay free either way.</p></div></section>
 </main>
 <footer><div class="w">Educational what-if tools, not financial advice. Passing a check never means a token is safe. Data from public APIs and may be delayed or wrong. Add your own Terms and Privacy pages before promoting the site.</div></footer>
 <button id="top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top" title="Back to top">↑</button>
@@ -109,6 +118,9 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 const $=id=>document.getElementById(id),num=id=>+$(id).value||0,usd=n=>"$"+Math.round(n).toLocaleString();
 addEventListener("scroll",()=>$("top-btn").classList.toggle("show",scrollY>600));
 const cls=n=>n>=0?"ok":"bad",sg=n=>(n<0?"-":"+")+usd(Math.abs(n));
+const sPm=s=>{const m=String(s||"").replace(/[$,\s]/g,"").match(/^([\d.]+)([kmb])?$/i);return m?+m[1]*({k:1e3,m:1e6,b:1e9}[(m[2]||"").toLowerCase()]||1):0},
+sFm=n=>n>=1e9?"$"+(n/1e9).toFixed(2).replace(/\.?0+$/,"")+"B":n>=1e6?"$"+(n/1e6).toFixed(2).replace(/\.?0+$/,"")+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+Math.round(n),
+sFt=n=>sFm(n).slice(1),sNice=n=>+n.toPrecision(2);
 
 /* ---------- Live scan (free public APIs, no keys) ---------- */
 let LIVE=[],INSIGHT=[],TOKX={img:null,sym:"",name:""},mk=null,HOLDERS=[],TAGS={};
@@ -165,7 +177,7 @@ async function scan(){
 
 /* ---------- Rug checker ---------- */
 const yn=[["revoked","Revoked"],["active","Still active"]];
-$("rugIn").innerHTML=[["mint","Mint authority",yn],["freeze","Freeze authority",yn],["lp","Liquidity",[["burned","Burned"],["locked","Locked"],["open","Not locked"]]]].map(f=>`<label>${f[1]}<select id="${f[0]}">${f[2].map(o=>`<option value="${o[0]}">${o[1]}</option>`).join("")}</select></label>`).join("")+[["top","Top 10 holders (%)",25],["dev","Dev wallet (%)",4],["tax","Sell tax (%)",0]].map(n=>`<label>${n[1]}<input id="${n[0]}" type="number" value="${n[2]}"></label>`).join("");
+$("rugIn").innerHTML=[["mint","Mint authority",yn],["freeze","Freeze authority",yn],["lp","Liquidity",[["burned","Burned"],["locked-perm","Locked, no expiry"],["locked","Locked, has expiry"],["open","Not locked"]]]].map(f=>`<label>${f[1]}<select id="${f[0]}">${f[2].map(o=>`<option value="${o[0]}">${o[1]}</option>`).join("")}</select></label>`).join("")+[["top","Top 10 holders (%)",25],["dev","Dev wallet (%)",4],["tax","Sell tax (%)",0]].map(n=>`<label>${n[1]}<input id="${n[0]}" type="number" value="${n[2]}"></label>`).join("");
 $("rugInAdv").innerHTML=[["top20","Top 20-50 holders (%)",0],["insiders","Linked/clustered wallets found",0],["lpDays","Days until LP lock expires (0 = burned/none)",0],["holderGrowth","New holders in last 24h",0]].map(n=>`<label>${n[1]}<input id="${n[0]}" type="number" value="${n[2]}" oninput="rug()"></label>`).join("");
 $("advMode").onchange=()=>{$("rugInAdv").style.display=$("advMode").checked?"flex":"none";rug()};
 let RC={s:0,grade:"",I:[]};
@@ -173,7 +185,7 @@ function rug(){const g=id=>$(id).value,top=num("top"),dev=num("dev"),tax=num("ta
  const add=(sev,t,d,p)=>{I.push({sev,t,d});s-=p};
  g("mint")=="active"?add("bad","Mint authority is still active","The dev can create unlimited new tokens and sell them into your buy. Safe tokens revoke this.",30):add("ok","Mint authority revoked","No new tokens can be created.",0);
  g("freeze")=="active"?add("bad","Freeze authority is active","The dev can freeze your wallet so you cannot sell.",20):add("ok","Freeze authority revoked","Your tokens cannot be frozen.",0);
- g("lp")=="open"?add("bad","Liquidity is not locked","The dev can remove the pool and leave you holding a token nobody can buy. The classic rug.",25):g("lp")=="locked"?add("warn","Liquidity locked or burned","Confirm which. Locked liquidity is only safe until the lock expires.",5):add("ok","Liquidity burned","The pool cannot be pulled.",0);
+ g("lp")=="open"?add("bad","Liquidity is not locked","The dev can remove the pool and leave you holding a token nobody can buy. The classic rug.",25):g("lp")=="locked"?add("warn","Liquidity is locked, but it expires","Safe only until the lock runs out. Check the unlock date and treat it as a deadline.",8):add("ok",g("lp")=="burned"?"Liquidity burned":"Liquidity locked with no expiry","The pool cannot be pulled, now or later.",0);
  top>50?add("bad","Top 10 holders own "+top+"%","A few wallets can crash the price. Pool and exchange wallets can inflate this number, so check who they are.",20):top>30?add("warn","Top 10 holders own "+top+"%","Concentrated. One large seller can move the price a lot.",10):add("ok","Top 10 holders own "+top+"%","Reasonably spread out.",0);
  dev>10?add("bad","Dev holds "+dev+"%","A big dev bag is a big sell wall waiting to happen.",15):dev>5?add("warn","Dev holds "+dev+"%","Worth watching the dev wallet.",5):add("ok","Dev holds "+dev+"%","Small dev share.",0);
  tax>10?add("bad","Sell tax "+tax+"%","Every sale loses this much. Extreme taxes can make selling impossible.",15):tax>5?add("warn","Sell tax "+tax+"%","Raises your break-even.",5):add("ok","Sell tax "+tax+"%","Low or none.",0);
@@ -236,86 +248,46 @@ async function card(noImg){$("cardPrevWrap").style.display="block";const c=$("ca
 function dlCard(){const c=$("cardCanvas");let url;try{url=c.toDataURL("image/png")}catch(e){return}
  const a=document.createElement("a");a.download=(TOKX.sym||"risk")+"-card.png";a.href=url;a.click()}
 
-/* ---------- Exit analyzer (sample data) ---------- */
-const SLIP=.04;
-const T=[{n:"PEPX",s:300,e:7,run:40,p:[1,1.4,2.2,3.1,2.4,1.6,.9,.6,.5,.4]},{n:"DOGGO",s:200,e:5,run:300,p:[1,.8,.7,.6,.5,.4,.35,.3]},{n:"MOONCAT",s:250,e:8,run:20,p:[1,1.5,2.5,4,6,5,3,2,1.5,1.2]},{n:"FROGE",s:150,e:2,run:60,p:[1,1.2,1.1,1.6,2.1,3.5,7,9,8]},{n:"BONKR",s:400,e:7,run:220,p:[1,.9,.8,.5,.3,.2,.1,.05]},{n:"WIFFY",s:250,e:6,run:30,p:[1,2.1,3.3,2.8,2,1.4,1,.7]},{n:"SHIBZ",s:200,e:5,run:180,p:[1,.7,.5,.6,.4,.3]},{n:"GIGA",s:300,e:7,run:90,p:[1,1.3,1.9,2.6,2.2,1.7,1.9,1.5]},{n:"TURBO",s:350,e:8,run:260,p:[1,.95,1.1,.8,.6,.4,.3,.25,.2]},{n:"NEKO",s:200,e:6,run:15,p:[1,1.8,2.4,3,1.2,.6,.5]},{n:"HOPPY",s:250,e:7,run:50,p:[1,1.1,1.3,1.2,1.5,2,2.2,1.8,3,4.5]},{n:"ZOOMR",s:300,e:5,run:210,p:[1,.85,.6,.45,.3,.2]}];
-const RULES=[{name:"Sell half at 2x",tp:[[2,.5]]},{name:"Sell half at 2x, stop -35%",tp:[[2,.5]],stop:.35},{name:"Stop -30% only",stop:.3},{name:"Trailing stop 30% once up 50%",trail:.3},{name:"Ladder 25% at 2x/3x/5x, stop -40%",tp:[[2,.25],[3,.25],[5,.25]],stop:.4},{name:"Sell all at 2x",tp:[[2,1]]}];
-function sim(t,r){let rem=1,cash=0,peak=1;const dn=(r.tp||[]).map(()=>0);
- for(let i=1;i<=t.e&&rem>0;i++){const v=t.p[i];peak=Math.max(peak,v);
-  (r.tp||[]).forEach(([m,f],k)=>{if(!dn[k]&&v>=m&&rem>0){const q=Math.min(f,rem);cash+=q*m*(1-SLIP);rem-=q;dn[k]=1}});
-  if(rem>0&&r.stop&&v<=1-r.stop){cash+=rem*v*(1-SLIP);rem=0}else if(rem>0&&r.trail&&peak>=1.5&&v<=peak*(1-r.trail)){cash+=rem*v*(1-SLIP);rem=0}}
- if(rem>0)cash+=rem*t.p[t.e];return cash}
-const pnl=(ts,r)=>ts.reduce((a,t)=>a+t.s*((r?sim(t,r):t.p[t.e])-1),0),avg=a=>a.reduce((x,y)=>x+y,0)/(a.length||1);
-function renderSample(){const base=pnl(T),res=RULES.map(r=>({r,p:pnl(T,r)})).sort((a,b)=>b.p-a.p),best=res[0],h=6,fit=RULES.map(r=>({r,p:pnl(T.slice(0,h),r)})).sort((a,b)=>b.p-a.p)[0].r;
- const gb=T.filter(t=>{const pk=Math.max(...t.p.slice(0,t.e+1));return pk>=2&&t.p[t.e]<pk*.5}),w=T.filter(t=>t.p[t.e]>=1),l=T.filter(t=>t.p[t.e]<1),se=T.filter(t=>Math.max(...t.p.slice(t.e+1))>=t.p[t.e]*2.5),late=T.filter(t=>t.run>=150);
- const F=[[`You gave back big gains on ${gb.length} of ${T.length} trades`,"Each hit 2x while you held, then you sold for under half the peak. Selling part at 2x recovers your entry, so the rest is a free roll."],[`You hold losers ${(avg(l.map(t=>t.e))/avg(w.map(t=>t.e))).toFixed(1)}x longer than winners`,"One -90% loss takes about nine 2x wins to repair. A stop caps the damage."],[`You sold ${se.length} winners before another 2.5x or more`,"A ladder keeps a small piece running, so you bank profit and still catch continuation."],[`${late.length} buys came after a 150%+ run, and ${late.filter(t=>t.p[t.e]<1).length} lost`,"Late entries have the least upside left and the most holders waiting to sell to you."]];
- $("ax").innerHTML=`<div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(base)}" style="display:block;font:800 36px Sora">${sg(base)}</b><span class="mut">${T.length} trades</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 36px Sora">${sg(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
- <div class="card tw"><table><tr><th>Exit rule</th><th>P&L</th><th>vs actual</th></tr>${res.map(x=>`<tr><td>${x.r.name}</td><td class="${cls(x.p)}">${sg(x.p)}</td><td class="${cls(x.p-base)}">${sg(x.p-base)}</td></tr>`).join("")}</table></div>
- <div class="card"><b>Does it hold up?</b> <span class="mut">Best rule on your first ${h} trades: "${fit.name}". On your next ${T.length-h}: ${sg(pnl(T.slice(h),fit))} vs your actual ${sg(pnl(T.slice(h)))}.</span></div>
- ${F.map(f=>`<div class="it warn"><b>${f[0]}</b><span class="mut">${f[1]}</span></div>`).join("")}`}
-renderSample();
-
-/* ---------- Exit analyzer: real wallet (beta) ---------- */
-const WSOL="So11111111111111111111111111111111111111112";
-async function fetchPairInfo(mint){try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+mint);const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];return{sym:p.baseToken.symbol,name:p.baseToken.name,pair:p.pairAddress,quote:p.quoteToken?.symbol}}catch(e){return null}}
-async function loadWallet(){
- const w=$("wa").value.trim();
- if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w)){$("waSt").textContent="That does not look like a Solana wallet address.";return}
- const scannedMint=$("ca").value.trim();
- $("waSt").textContent="Reading your last 40 transactions on-chain, this can take 30-60 seconds...";
- try{
-  const sigs=await rpc("getSignaturesForAddress",[w,{limit:40}]);
-  if(!sigs.length)throw new Error("no transactions found for this wallet");
-  const byMint={};
-  for(let si=0;si<sigs.length;si++){const sg=sigs[si];let tx;
-   $("waSt").textContent="Reading transaction "+(si+1)+" of "+sigs.length+"...";
-   for(let tries=0;tries<2&&!tx;tries++){try{tx=await rpc("getTransaction",[sg.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}])}catch(e){await sleep(350*(tries+1))}}
-   if(!tx||!tx.meta||tx.meta.err)continue;
-   const idx=tx.transaction.message.accountKeys.findIndex(a=>(a.pubkey||a)===w);if(idx<0)continue;
-   const sb=tx.meta.preBalances[idx]/1e9,sa=tx.meta.postBalances[idx]/1e9,dSol=sa-sb+(tx.meta.fee||0)/1e9;
-   const mints=new Set([...(tx.meta.preTokenBalances||[]),...(tx.meta.postTokenBalances||[])].filter(b=>b.owner===w&&b.mint!==WSOL).map(b=>b.mint));
-   mints.forEach(mt=>{const pre=(tx.meta.preTokenBalances||[]).find(b=>b.mint===mt&&b.owner===w),post=(tx.meta.postTokenBalances||[]).find(b=>b.mint===mt&&b.owner===w);
-    const tb=pre?+pre.uiTokenAmount.uiAmount:0,ta=post?+post.uiTokenAmount.uiAmount:0,dTok=ta-tb;if(Math.abs(dTok)<1e-6)return;
-    (byMint[mt]=byMint[mt]||[]).push({t:sg.blockTime,dTok,dSol})})}
-  let mint=scannedMint,ev=byMint[mint]||[],fallbackNote="";
-  if(!ev.filter(e=>e.dTok>0).length){
-   const cands=Object.keys(byMint).filter(m=>byMint[m].some(e=>e.dTok>0));
-   if(!cands.length)throw new Error("no token swaps found in your last 40 transactions at all");
-   cands.sort((a,b)=>Math.max(...byMint[b].map(e=>e.t))-Math.max(...byMint[a].map(e=>e.t)));
-   mint=cands[0];ev=byMint[mint];
-   fallbackNote=scannedMint?"No swaps of the scanned token were found — showing your most recent traded token instead.":"Showing your most recent traded token.";
-  }
-  let pairInfo=mint===scannedMint&&mk&&mk.pair?{sym:mk.sym,name:mk.name,pair:mk.pair,quote:mk.quote}:await fetchPairInfo(mint);
-  if(!pairInfo||!pairInfo.pair)throw new Error("could not find a pool for this token to price your trades");
-  if((pairInfo.quote||"").toUpperCase()!="SOL")throw new Error("this token is paired with "+(pairInfo.quote||"something else")+", not SOL — this beta only prices SOL pairs");
-  ev.sort((a,b)=>a.t-b.t);
-  const buys=ev.filter(e=>e.dTok>0);if(!buys.length)throw new Error("no buys of this token found, only sells or transfers");
-  const from=buys[0].t,entryPriceSol=-buys[0].dSol/buys[0].dTok;
-  const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${pairInfo.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
-  if(!oh||!oh.data||!oh.data.attributes)throw new Error("no price history available for this pool yet");
-  let list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]).filter(r=>r[0]>=from-3600);
-  if(list.length<3)throw new Error("not enough hourly price history since your first buy to run the comparison");
-  const baseUsd=list[0][4],prices=[1,...list.map(r=>r[4]/baseUsd)];
-  const totalSpent=ev.filter(e=>e.dTok>0).reduce((a,e)=>a-e.dSol,0),totalRecv=ev.filter(e=>e.dTok<0).reduce((a,e)=>a+e.dSol,0),netTok=ev.reduce((a,e)=>a+e.dTok,0),heldNow=netTok>1e-6;
-  const lastT=ev[ev.length-1].t;let eIdx=prices.length-1;
-  if(!heldNow){const li=list.findIndex(r=>r[0]>=lastT);eIdx=li<0?prices.length-1:li+1}
-  const curSol=entryPriceSol*prices[prices.length-1],unreal=heldNow?netTok*curSol:0,actual=totalRecv-totalSpent+unreal;
-  const T2=[{s:totalSpent,e:eIdx,run:0,p:prices}],res=RULES.map(r=>({r,p:pnl(T2,r)-totalSpent})).sort((a,b)=>b.p-a.p),best=res[0];
-  const so=n=>(n<0?"-":"+")+Math.abs(n).toFixed(3)+" SOL";
-  $("axMode").textContent=fallbackNote?"your wallet · $"+(pairInfo.sym||"?"):"your wallet";
-  $("ax").innerHTML=`${fallbackNote?`<div class="it info"><b>${fallbackNote}</b><span class="mut">Most recently traded: $${pairInfo.sym||"?"} ${pairInfo.name?"("+pairInfo.name+")":""}</span></div>`:""}
-  <div class="two"><div class="card"><span class="mut">What you actually made</span><b class="${cls(actual)}" style="display:block;font:800 32px Sora">${so(actual)}</b><span class="mut">${totalSpent.toFixed(3)} SOL in${heldNow?", still holding part":", fully closed"}</span></div><div class="card"><span class="mut">What you would have made</span><b class="${cls(best.p)}" style="display:block;font:800 32px Sora">${so(best.p)}</b><span class="mut">${best.r.name} (after ${SLIP*100}% slippage)</span></div></div>
-  <div class="card tw"><table><tr><th>Exit rule</th><th>P&L</th><th>vs actual</th></tr>${res.map(x=>`<tr><td>${x.r.name}</td><td class="${cls(x.p)}">${so(x.p)}</td><td class="${cls(x.p-actual)}">${so(x.p-actual)}</td></tr>`).join("")}</table></div>
-  <div class="it info"><b>How this was built</b><span class="mut">Pulled from your wallet's real token-balance changes on $${pairInfo.sym||"this token"}, priced with real hourly candles since your first buy. Multiple buys/sells are combined into one position, and this assumes SOL's own USD price stayed roughly flat during your hold — usually fine over hours to a couple days. Beta: a best-effort read of on-chain data, not tax or accounting output.</span></div>`;
-  $("waSt").textContent="Loaded "+ev.length+" balance-changing transactions on $"+(pairInfo.sym||"this token")+" since "+new Date(from*1e3).toLocaleString()+"."
- }catch(e){$("waSt").textContent="Could not build your real exit history: "+e.message+". You can still browse the sample wallet above."}
-}
+/* ---------- Position Manager (premium, localStorage-based) ---------- */
+function loadPositions(){try{return JSON.parse(localStorage.getItem("tt_positions")||"[]")}catch(e){return[]}}
+function savePositions(a){localStorage.setItem("tt_positions",JSON.stringify(a))}
+function posFillFromScan(){if(!mk){$("posSt").textContent="Scan a token above first.";return}$("posMint").value=$("ca").value.trim();$("posEntryMc").value=sFt(mk.mc)}
+async function addPosition(){
+ const mint=$("posMint").value.trim(),entryMc=sPm($("posEntryMc").value),size=+$("posSize").value||0;
+ if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)){$("posSt").textContent="That does not look like a Solana token address.";return}
+ if(!entryMc||!size){$("posSt").textContent="Enter your entry market cap and a position size.";return}
+ $("posSt").textContent="Adding...";
+ let info=null;try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+mint);const p=d.sort((x,y)=>(y.liquidity?.usd||0)-(x.liquidity?.usd||0))[0];info={sym:p.baseToken.symbol,name:p.baseToken.name,img:p.info?.imageUrl||null}}catch(e){}
+ const list=loadPositions();list.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),mint,entryMc,size,sym:info?.sym||"?",name:info?.name||"",img:info?.img||null,addedAt:Date.now()});
+ savePositions(list);$("posMint").value="";$("posEntryMc").value="";$("posSize").value="";
+ $("posSt").textContent="Added. Tracking "+list.length+" position"+(list.length==1?"":"s")+".";renderPositions()}
+function removePosition(id){savePositions(loadPositions().filter(p=>p.id!=id));renderPositions()}
+async function renderPositions(){
+ const list=loadPositions(),out=$("posOut"),sum=$("posSummary");
+ if(!list.length){out.innerHTML="";sum.innerHTML='<div class="card mut">No positions tracked yet. Add one above, even a trade you already took, to see your real portfolio risk in one place.</div>';return}
+ out.innerHTML='<div class="card mut">Loading live prices…</div>';
+ const rows=await Promise.all(list.map(async p=>{
+  let curMc=null,img=p.img;
+  try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+p.mint);const q=d.sort((x,y)=>(y.liquidity?.usd||0)-(x.liquidity?.usd||0))[0];
+   curMc=q.marketCap||q.fdv||null;img=q.info?.imageUrl||img;if(!p.sym||p.sym=="?"){p.sym=q.baseToken.symbol;p.name=q.baseToken.name}}catch(e){}
+  const pct=curMc?(curMc/p.entryMc-1)*100:null,val=curMc?p.size*(curMc/p.entryMc):p.size,pl=val-p.size;
+  return{...p,curMc,img,pct,val,pl}}));
+ const invested=rows.reduce((a,r)=>a+r.size,0),value=rows.reduce((a,r)=>a+r.val,0),pl=value-invested,plPct=invested?pl/invested*100:0,
+ worst=rows.slice().sort((a,b)=>(a.pct??0)-(b.pct??0))[0],best=rows.slice().sort((a,b)=>(b.pct??0)-(a.pct??0))[0],
+ top=rows.slice().sort((a,b)=>b.size-a.size)[0],conc=invested?top.size/invested*100:0;
+ const tile=(l,v,c)=>`<div class="card stat"><b class="${c||""}">${v}</b><span>${l}</span></div>`,notes=[];
+ if(conc>=50)notes.push(`<div class="it warn"><b>$${top.sym} is ${conc.toFixed(0)}% of your tracked bag</b><span class="mut">One token dominates your risk here. If it goes to zero, it takes most of the portfolio with it.</span></div>`);
+ if(best&&best.pct>=100)notes.push(`<div class="it ok"><b>$${best.sym} is up ${best.pct.toFixed(0)}%</b><span class="mut">Check the plan you set in Strategy Lab. Big unrealized gains that never get trimmed have a way of round-tripping back to nothing.</span></div>`);
+ if(worst&&worst.pct<=-50)notes.push(`<div class="it bad"><b>$${worst.sym} is down ${Math.abs(worst.pct).toFixed(0)}%</b><span class="mut">Decide on purpose whether this is a stop-loss you're avoiding, or a real conviction hold. "Waiting for it to come back" isn't a decision.</span></div>`);
+ sum.innerHTML=`<div class="grid">${tile("Invested",usd(invested))}${tile("Current value",usd(value))}${tile("Unrealized P&L",sg(pl)+" ("+(plPct>=0?"+":"")+plPct.toFixed(0)+"%)",cls(pl))}${tile("Tracked positions",rows.length)}</div>${notes.join("")}`;
+ out.innerHTML=rows.map(r=>`<div class="card"><div class="row" style="align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+ <div class="row" style="align-items:center;gap:12px;min-width:0"><div style="width:38px;height:38px;border-radius:50%;background:var(--s2);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font:800 15px Sora">${r.img?`<img src="${r.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`:((r.sym||"?")[0]||"?")}</div>
+ <div style="min-width:0"><b style="font:700 15px Sora">$${r.sym||"?"}</b><div class="mut" style="font-size:12px">${usd(r.size)} in at ${sFm(r.entryMc)} · now ${r.curMc?sFm(r.curMc):"n/a"}</div></div></div>
+ <div class="row" style="align-items:center;gap:14px;flex:none"><b class="${cls(r.pl)}" style="font:800 17px Sora">${r.pct!=null?(r.pct>=0?"+":"")+r.pct.toFixed(0)+"%":"n/a"}</b><span class="mut" style="font-size:12px">${sg(r.pl)}</span><button class="btn g" style="padding:6px 12px;font-size:12px" onclick="scanFromHot('${r.mint}')">Scan</button><button class="btn g" style="padding:6px 12px;font-size:12px" onclick="removePosition('${r.id}')">Remove</button></div></div></div>`).join("")}
+renderPositions();
 
 /* ---------- Strategy Lab (forward-looking trade plans) ---------- */
 let STRAT={hist:null};
-const sPm=s=>{const m=String(s||"").replace(/[$,\s]/g,"").match(/^([\d.]+)([kmb])?$/i);return m?+m[1]*({k:1e3,m:1e6,b:1e9}[(m[2]||"").toLowerCase()]||1):0},
-sFm=n=>n>=1e9?"$"+(n/1e9).toFixed(2).replace(/\.?0+$/,"")+"B":n>=1e6?"$"+(n/1e6).toFixed(2).replace(/\.?0+$/,"")+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+Math.round(n),
-sFt=n=>sFm(n).slice(1),sNice=n=>+n.toPrecision(2);
 const SPRE=[
 {n:"Dip scalp 2x",d:"Wait for a 25% dip, buy, sell at 2x",f:(c,a)=>({e1:c*.75,t1:c*1.5,s:c*.6})},
 {n:"Dip, then ladder out",d:"Buy the dip, sell half at 1.5x and the rest at 2.5x",f:(c,a)=>({e1:c*.75,t1:c*1.125,t2:c*1.875,s:c*.6})},
@@ -347,11 +319,11 @@ function stratChart(cur,ath,E,X,stop,avg){
  zone=(a,b,c)=>`<rect x="${x0.toFixed(1)}" y="${Y(Math.max(a,b)).toFixed(1)}" width="${(xR-x0).toFixed(1)}" height="${Math.abs(Y(a)-Y(b)).toFixed(1)}" fill="${c}" opacity=".14"/>`,
  lines=[{v:cur,c:"#eceaff",t:"Now "+sFm(cur)},{v:ath,c:"#ffc44d",t:"ATH "+sFm(ath)},...E.map(v=>({v,c:"#3df2b0",t:"Buy "+sFm(v)})),...X.map(v=>({v,c:"#ff5fa2",t:"Sell "+sFm(v)+" · "+(v/avg).toFixed(1)+"x"})),...(stop?[{v:stop,c:"#ff5d73",t:"Stop "+sFm(stop)}]:[])].filter(l=>l.v>0).map(l=>({...l,y:Y(l.v)})).sort((a,b)=>a.y-b.y);
  lines.forEach((l,i)=>l.ly=i?Math.max(l.y,lines[i-1].ly+17):l.y);
- return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:620px;height:auto;display:block;font-family:'DM Sans',sans-serif"><defs><clipPath id="sc"><rect x="${pl}" y="${pt}" width="${pw}" height="${ph}"/></clipPath></defs>
+ return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:620px;height:auto;display:block;font-family:'DM Sans',sans-serif"><defs><clipPath id="stratClip"><rect x="${pl}" y="${pt}" width="${pw}" height="${ph}"/></clipPath></defs>
  ${zone(X[X.length-1],avg,"#3df2b0")}${stop&&stop<avg?zone(avg,stop,"#ff5d73"):""}
  ${lines.map(l=>`<line x1="${pl}" x2="${xR}" y1="${l.y.toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="${l.c}" stroke-dasharray="4 5" opacity=".5"/><text x="${xR+10}" y="${(l.ly+5).toFixed(1)}" fill="${l.c}" font-size="14" font-weight="700">${l.t}</text>`).join("")}
  <line x1="${xN}" x2="${xN}" y1="${pt}" y2="${pt+ph}" stroke="#9a97c4" opacity=".4"/><text x="${pl+4}" y="${pt+14}" fill="#9a97c4" font-size="13">Price so far</text><text x="${xN+8}" y="${pt+14}" fill="#9a97c4" font-size="13">Your plan</text>
- <path d="${P}" fill="none" stroke="#8b6cff" stroke-width="2.5" clip-path="url(#sc)"/>
+ <path d="${P}" fill="none" stroke="#8b6cff" stroke-width="2.5" clip-path="url(#stratClip)"/>
  <path d="${path}" fill="none" stroke="#eceaff" stroke-width="2" stroke-dasharray="7 6"/>
  ${seq.map((s,k)=>`<circle cx="${fx(k).toFixed(1)}" cy="${Y(s.v).toFixed(1)}" r="7" fill="${s.c}" stroke="#0a0913" stroke-width="2"/><text x="${fx(k).toFixed(1)}" y="${(Y(s.v)-13).toFixed(1)}" fill="${s.c}" font-size="14" font-weight="700" text-anchor="middle">${s.t}</text>`).join("")}</svg>`}
 function stratDraw(){
@@ -384,20 +356,41 @@ function liq(){const L=num("L")/2,P=num("P"),Q=num("Q");if(L<=0){$("liqOut").tex
  $("liqOut").innerHTML=`<p style="margin:0 0 6px">${Q>0?`After the big holder sells, your bag is worth <b>${usd(spot)}</b> (was ${usd(P)}). `:""}Selling it all returns about <b class="${imp>.2?"bad":imp>.08?"warn":"ok"}">${usd(got)}</b>, a ${(imp*100).toFixed(1)}% price-impact loss.</p><span class="mut">To keep impact under 5%, sell in chunks of about ${usd(safe)}. Thin pools punish big exits, and the chart never shows it until you sell.</span>`}
 ["L","P","Q"].forEach(i=>$(i).oninput=liq);liq();
 
-/* ---------- Costs and sizing ---------- */
-const CI=[["cs","Position (USD)",500],["bs","Buy slippage (%)",1],["ss","Sell slippage (%)",2],["fee","Platform fee (%)",1],["tx","Sell tax (%)",0],["pr","Priority fee per trade (USD)",.5]];
-$("costIn").innerHTML=CI.map(c=>`<label>${c[1]}<input id="${c[0]}" type="number" step="any" value="${c[2]}"></label>`).join("");
-function cost(){const s=num("cs"),f=num("fee")/100,pr=num("pr"),v=s*(1-num("bs")/100)*(1-f)-pr,k=(1-num("ss")/100)*(1-num("tx")/100)*(1-f),m=v>0&&k>0?(s+pr)/(v*k):0;
- $("costOut").innerHTML=m?`The coin must rise <b class="warn">${((m-1)*100).toFixed(1)}%</b> just for you to break even. Fees and slippage cost about <b>${usd(s*(m-1))}</b> round trip.`:`<span class="bad">Costs exceed the position.</span>`}
-CI.forEach(c=>$(c[0]).oninput=cost);cost();
-function pos(){const a=num("acc"),r=num("rk"),sl=num("sl");$("posOut").innerHTML=sl>0?`Risking ${r}% (${usd(a*r/100)}) with a ${sl}% stop gives a position of <b>${usd(a*r/sl)}</b>. Sizing from the loss you accept keeps one bad trade from wrecking the account.`:""}
-["acc","rk","sl"].forEach(i=>$(i).oninput=pos);pos();
+/* ---------- Gut Check ---------- */
+$("gutIn").innerHTML=`<label>Why are you buying this, right now?<select id="gutWhy" onchange="gutCheck()">
+<option value="plan">Fits a plan I already had</option><option value="social">Someone told me, or saw it on social media</option><option value="fomo">It's already pumping and I don't want to miss it</option><option value="revenge">I'm trying to win back a recent loss</option><option value="unsure">Not sure, just vibes</option></select></label>
+<label>Do you know your exit plan already? (entry, target, stop)<select id="gutPlan" onchange="gutCheck()"><option value="yes">Yes, it's set</option><option value="no">No, not yet</option></select></label>
+<label>What % of your trading account is this?<input id="gutPct" type="number" value="5" oninput="gutCheck()"></label>
+<label>2+ losing trades already today?<select id="gutStreak" onchange="gutCheck()"><option value="no">No</option><option value="yes">Yes</option></select></label>
+<label>If this goes to zero tonight, does it hurt?<select id="gutHurt" onchange="gutCheck()"><option value="no">No, I'm fine either way</option><option value="yes">Yes, it would sting</option></select></label>`;
+function gutCheck(){
+ const why=$("gutWhy").value,plan=$("gutPlan").value,pct=+$("gutPct").value||0,streak=$("gutStreak").value,hurt=$("gutHurt").value,F=[];let pts=0;
+ if(why=="fomo"){F.push(["bad","You're chasing a move that already happened","By the time a pump is obvious enough to notice, early buyers are often the ones you're buying from. This is how you become someone else's exit liquidity."]);pts+=25}
+ if(why=="social"){F.push(["warn","This idea came from someone else","Their position, their size and their exit timing aren't yours. Run it through Scan yourself before sizing in."]);pts+=15}
+ if(why=="revenge"){F.push(["bad","This looks like revenge trading","Trying to win back a loss with a new bet usually means worse sizing and no real thesis, and it tends to compound the damage. Consider sitting this one out."]);pts+=30}
+ if(why=="unsure"){F.push(["warn","You don't have a clear reason to be in this trade","If you can't say why you're buying in one sentence, you don't have a plan yet, you have a hope."]);pts+=15}
+ if(plan=="no"){F.push(["bad","No exit plan set","Decide your target and your stop before you buy, not after you're already emotionally in it. Build one in Strategy Lab first."]);pts+=25}
+ if(pct>20){F.push(["bad","This is "+pct+"% of your account","One bad trade can seriously damage the account at this size. Most disciplined traders keep a single memecoin well under 10-15%."]);pts+=20}
+ else if(pct>10){F.push(["warn","This is "+pct+"% of your account","On the larger side for one memecoin. Make sure your conviction actually matches the size."]);pts+=8}
+ if(streak=="yes"){F.push(["warn","Two or more losses already today","Trading to get even tends to produce a third loss, not a recovery. A short break costs you nothing."]);pts+=15}
+ if(hurt=="yes"){F.push(["bad","Losing this would actually hurt","Size it down until losing it completely wouldn't change your week. That's the position size that lets you think clearly."]);pts+=30}
+ const score=Math.max(0,100-pts),verdict=score>=75?["Clear to trade","ok"]:score>=45?["Slow down","warn"]:["Don't take this one","bad"];
+ $("gutOut").innerHTML=`<div class="row" style="align-items:center;gap:16px;margin-bottom:12px"><b style="font:800 30px Sora" class="${verdict[1]}">${verdict[0]}</b><span class="mut">Gut check score: ${score}/100</span></div>${F.length?F.map(f=>`<div class="it ${f[0]}"><b>${f[1]}</b><span class="mut">${f[2]}</span></div>`).join(""):`<div class="it ok"><b>Nothing here suggests you're forcing this trade.</b><span class="mut">Still size it like it can go to zero, because it can.</span></div>`}`}
+gutCheck();
 
 /* ---------- Learn ---------- */
-const G=[["Mint authority","Permission to create new tokens. If active, supply can be inflated any time."],["Freeze authority","Permission to freeze wallets. If active, the dev can block your sells."],["LP (liquidity pool)","The pool of tokens and SOL that trades run against. No pool, no exit."],["Burned LP","Liquidity sent to an address nobody controls, so the pool can never be pulled."],["Locked LP","Liquidity held by a lock contract until a set date. Check the date."],["Bundle","Many wallets funded by one person buying at launch, then dumping on real buyers."],["Honeypot","A token you can buy but not sell."],["Slippage","The gap between the price you expected and the price you got."],["Price impact","How much your own trade moves the price. Bigger in thin pools."],["Sell tax","A fee taken on each sale, set by the token contract."],["Exit liquidity","Buyers available for you to sell to. If you are early, late buyers are it."],["Round trip","Buying and later selling one position. Used to score each trade."]];
-const PAT=[["Liquidity pull","Dev removes the pool. Price goes to zero in one transaction."],["Slow bleed","Insiders sell small amounts for days while the chart looks healthy."],["Bundled launch","Insider wallets buy in the first blocks, hold the supply, then dump on newcomers."],["Tax trap","Sell tax is raised after launch until selling loses nearly everything."],["Fake copycat","Same name and image as a hot token, different contract."]];
+const G=[["Mint authority","Permission to create new tokens. If active, supply can be inflated any time."],["Freeze authority","Permission to freeze wallets. If active, the dev can block your sells."],["LP (liquidity pool)","The pool of tokens and SOL that trades run against. No pool, no exit."],["Burned LP","Liquidity sent to an address nobody controls, so the pool can never be pulled."],["Locked LP","Liquidity held by a lock contract until a set date. Check the date."],["Bundle","Many wallets funded by one person buying at launch, then dumping on real buyers."],["Honeypot","A token you can buy but not sell."],["Slippage","The gap between the price you expected and the price you got."],["Price impact","How much your own trade moves the price. Bigger in thin pools."],["Sell tax","A fee taken on each sale, set by the token contract."],["Exit liquidity","Buyers available for you to sell to. If you are early, late buyers are it."],["Round trip","Buying and later selling one position. Used to score each trade."],["Market cap vs FDV","Market cap counts circulating supply; FDV counts every token that will ever exist. A huge gap between them means heavy future unlocks or team supply still to come."],["ATH (all-time high)","The highest market cap or price a token has ever reached. Buying near the ATH means every past buyer is now able to sell at a profit into you."],["Bonding curve","The pricing formula many new launches (like pump.fun) start on before a real liquidity pool exists. Price rises mechanically with each buy until the token \"graduates.\""],["Graduate / migrate","When a bonding-curve token earns enough volume to move to a real DEX pool. Many tokens die exactly at or just after this point."],["Sniper","A bot or wallet built to buy in the very first block(s) of a launch, often reselling into the first wave of real buyers within seconds."],["Insider cluster","A group of wallets that were funded from the same source or trade in sync, usually one person or team controlling several \"different\" holders."],["Wash trading","Trading between wallets the same person or team controls, to fake volume and make a dead token look active."],["CTO (community takeover)","A token whose original dev disappears or is pushed out and a group of holders informally takes over marketing. Sometimes a real revival, often just a way to keep a dead chart alive."],["Diamond hands / paper hands","Slang for holding through volatility (diamond) versus selling at the first sign of a drop or profit (paper). Neither is automatically correct — the plan should decide it, not the label."],["Degen / ape","Slang for buying something fast, on hype, with little research. Fine to know you're doing it; risky to size a position like you did research when you didn't."]];
+const PAT=[["Liquidity pull","Dev removes the pool. Price goes to zero in one transaction."],["Slow bleed","Insiders sell small amounts for days while the chart looks healthy."],["Bundled launch","Insider wallets buy in the first blocks, hold the supply, then dump on newcomers."],["Tax trap","Sell tax is raised after launch until selling loses nearly everything."],["Fake copycat","Same name and image as a hot token, different contract."],["Sniper-dominated supply","Bots buy most of the early supply in the first blocks, then resell into the crowd the moment real buyers show up, before most people can even load the chart."],["Fake CTO revival","A dead token gets a new logo and a \"community takeover\" narrative to attract a fresh wave of buyers, with no real change to holder concentration or contract risk."],["Wash-traded pump","Coordinated wallets trade back and forth to inflate 24h volume and make a thin, risky pool look active and in-demand."],["Upgradeable contract trap","The contract includes an admin function (often disguised) that can change tax, disable selling, or mint more supply after launch, even if it looks clean on day one."]];
+const RULES2=["Decide your exit, target and stop, before you buy, not after.","Only risk an amount that would not change your week if it went to zero.","Take at least a partial profit on any big winner. A free roll beats a hope.","Never average down on a token whose chart matches an active rug pattern.","A passing score is a second opinion, not a green light. Read the flags yourself.","Trade less right after a loss, not more.","Write down why you're in a trade in one sentence before you enter it.","Check liquidity and holder concentration before you check the chart's shape."];
+const MISTAKES=[["Buying because it's already pumping","By the time a pump is obvious, early buyers are often the ones selling into you. Chasing a green candle is buying someone else's exit."],["Moving your stop-loss further away mid-trade","If the plan was -30% and you move it to -60% because you don't want to be wrong, you've stopped managing risk and started hoping."],["Never taking any profit","Paper gains aren't real until part of the position is sold. Selling half at 2x banks your entry back, so the rest is a free roll."],["Averaging down without a new reason","Buying more of something that's falling only makes sense if something about the token actually changed. Otherwise it's doubling the bet, not managing it."],["Revenge trading after a loss","A new bet to win back an old loss usually means worse sizing and no real thesis, and it tends to compound the damage rather than fix it."],["Trusting a call without checking it yourself","Someone else's position, size and exit timing aren't yours. Scan it before you size in."],["Sizing every trade the same","A high-conviction setup you actually researched and a random gamble shouldn't get the same amount of your account."],["Checking the chart every few minutes","Constant checking turns a plan into a reaction. A set target and stop don't need to be watched minute to minute."],["No plan before entry","If you can't say your target and your invalidation point in one sentence before buying, that's a hope, not a plan."],["Believing this time is different","Every rug and every pump-and-dump looked, in the moment, like the exception. The base rate for new memecoins going to zero stays high regardless of how a chart feels."]];
+const RES=[["RugCheck","Automated risk report and holder analysis for Solana tokens.","https://rugcheck.xyz"],["DexScreener","Live charts, pairs and trending tokens across chains.","https://dexscreener.com"],["GeckoTerminal","On-chain charts and pool data, including pools minutes old.","https://www.geckoterminal.com"],["Birdeye","Solana-focused charts plus holder and wallet breakdowns.","https://birdeye.so"],["Solscan","Look up any wallet or contract straight from the chain.","https://solscan.io"],["Jupiter","The main swap aggregator for trading on Solana.","https://jup.ag"]];
+
 function gl(){const q=$("gq").value.toLowerCase();$("gl").innerHTML=G.filter(g=>(g[0]+g[1]).toLowerCase().includes(q)).map(g=>`<div class="it"><b>${g[0]}</b><span class="mut">${g[1]}</span></div>`).join("")||"<p class='mut'>No match.</p>"}
 $("gq").oninput=gl;gl();$("pat").innerHTML=PAT.map(p=>`<div class="it warn"><b>${p[0]}</b><span class="mut">${p[1]}</span></div>`).join("");
+$("rules").innerHTML=RULES2.map(r=>`<div class="it ok"><b>${r}</b></div>`).join("");
+$("mistakes").innerHTML=MISTAKES.map(m=>`<div class="it bad"><b>${m[0]}</b><span class="mut">${m[1]}</span></div>`).join("");
+$("resources").innerHTML=RES.map(r=>`<div class="it info"><b><a href="${r[2]}" target="_blank" rel="noopener" style="color:inherit">${r[0]} ↗</a></b><span class="mut">${r[1]}</span></div>`).join("");
+
 
 /* ---------- Spot the Rug ---------- */
 const CASES=[{st:["Mint authority: revoked","Freeze authority: revoked","Liquidity: burned","Top 10 holders: 18%","Dev wallet: 3%","Sell tax: 0%"],rug:false,why:"Every authority is revoked, liquidity is burned, holders are spread out. That only means the classic traps are absent, not that the price will rise."},{st:["Mint authority: ACTIVE","Freeze authority: revoked","Liquidity: not locked","Top 10 holders: 62%","Dev wallet: 14%","Sell tax: 0%"],rug:true,why:"Active mint, unlocked liquidity and concentrated holders. The dev can mint and dump, or pull the pool."},{st:["Mint authority: revoked","Freeze authority: revoked","Liquidity: locked 2 days","Top 10 holders: 25%","Dev wallet: 4%","Sell tax: 25%"],rug:true,why:"A 25% sell tax makes exiting expensive and a 2-day lock ends almost immediately. Both are exit traps."},{st:["Mint authority: revoked","Freeze authority: revoked","Liquidity: burned","Top 10 holders: 71%","Dev wallet: 2%","Note: 6 top wallets were funded by the same source"],rug:true,why:"Clean on paper, but concentrated holders share a funder. That is a bundle waiting to dump."}];
@@ -471,5 +464,31 @@ async function loadHot(){$("hotSt").textContent="Loading trending Solana pools..
    ${h.flags.length?`<div style="margin-top:8px">${h.flags.map(f=>`<span class="pill ${f[0]}" style="margin:2px 4px 0 0;border-color:currentColor">${f[1]}</span>`).join("")}</div>`:""}</div>`}).join("");
  }catch(e){$("hotSt").textContent="Could not load trending pools: "+e.message}}
 function scanFromHot(mint){$("ca").value=mint;location.hash="#scan";scan()}
+
+/* ---------- Watchlist ---------- */
+function loadWatch(){try{return JSON.parse(localStorage.getItem("tt_watch")||"[]")}catch(e){return[]}}
+function saveWatch(a){localStorage.setItem("tt_watch",JSON.stringify(a))}
+function watchAddScanned(){if(!mk||!TOKX){$("watchSt").textContent="Scan a token above first.";return}watchAddMint($("ca").value.trim())}
+function watchAdd(){const m=$("watchMint").value.trim();if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(m)){$("watchSt").textContent="That does not look like a Solana token address.";return}watchAddMint(m);$("watchMint").value=""}
+function watchAddMint(m){const list=loadWatch();if(list.includes(m)){$("watchSt").textContent="Already on your watchlist.";return}list.push(m);saveWatch(list);renderWatch()}
+function watchRemove(m){saveWatch(loadWatch().filter(x=>x!=m));renderWatch()}
+async function renderWatch(){
+ const list=loadWatch(),out=$("watchOut");
+ if(!list.length){$("watchSt").textContent="Nothing pinned yet.";out.innerHTML="";return}
+ $("watchSt").textContent="Watching "+list.length+" token"+(list.length==1?"":"s")+" · updates each time you open this page.";
+ out.innerHTML='<div class="card mut">Loading…</div>';
+ const rows=await Promise.all(list.map(async m=>{
+  try{const d=await j("https://api.dexscreener.com/token-pairs/v1/solana/"+m);const p=d.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
+   return{mint:m,name:p.baseToken.name,sym:p.baseToken.symbol,img:p.info?.imageUrl||null,liq:p.liquidity?.usd||0,vol:p.volume?.h24||0,mcap:p.marketCap||p.fdv||0,ch:p.priceChange?.h24,ageH:p.pairCreatedAt?(Date.now()-p.pairCreatedAt)/36e5:null}}
+  catch(e){return{mint:m,err:true}}}));
+ out.innerHTML=rows.map(r=>{
+  if(r.err)return `<div class="card"><div class="row" style="align-items:center;justify-content:space-between"><span class="mut">${r.mint.slice(0,4)}…${r.mint.slice(-4)} — could not load</span><button class="btn g" onclick="watchRemove('${r.mint}')">Remove</button></div></div>`;
+  const h=heuristic({liq:r.liq,vol:r.vol,ch:r.ch,ageH:r.ageH});
+  return `<div class="card"><div class="row" style="align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <div class="row" style="align-items:center;gap:12px;min-width:0"><div style="width:38px;height:38px;border-radius:50%;background:var(--s2);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font:800 15px Sora">${r.img?`<img src="${r.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`:((r.sym||"?")[0]||"?")}</div>
+  <div style="min-width:0"><b style="font:700 15px Sora">$${r.sym||"?"}</b><div class="mut" style="font-size:12px">${usd(r.mcap)} mc · ${usd(r.liq)} liq · <span class="${r.ch>=0?'ok':'bad'}">${(r.ch||0).toFixed(0)}%</span> 24h</div></div></div>
+  <div class="row" style="align-items:center;gap:10px;flex:none"><span class="pill ${h.grade[1]}" style="border-color:currentColor">${h.grade[0]}</span><button class="btn g" onclick="scanFromHot('${r.mint}')">Scan</button><button class="btn g" onclick="watchRemove('${r.mint}')">Remove</button></div></div></div>`}).join("")}
+renderWatch();
+
 loadHot();
 </script></body></html>
