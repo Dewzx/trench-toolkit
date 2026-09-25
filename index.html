@@ -40,10 +40,14 @@ input,select{background:var(--s2);border:1px solid var(--line);color:var(--fg);b
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line)}.tw{overflow-x:auto}
 .two{display:grid;gap:12px;grid-template-columns:1fr 1fr}@media(max-width:600px){.two{grid-template-columns:1fr}}
 .pill{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--mut)}
+.chip{flex:1;min-width:150px;text-align:left;background:var(--s2);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:10px 12px;font:inherit;cursor:pointer}.chip b{display:block;font:700 14px Sora}.chip span{color:var(--mut);font-size:12px}.chip:hover,.chip.on{border-color:var(--v)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.dot.live{animation:pulse 1.4s ease-in-out infinite;background:var(--ok)}
 footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;color:var(--mut);font-size:13px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style></head><body>
-<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#hot">Hot Tokens</a></div></header>
+<header><div class="w"><span class="logo">🧪 <b>Trench Toolkit</b></span><a href="#scan">Scan</a><a href="#analyzer">Exit Analyzer</a><a href="#strat">Strategy Lab</a><a href="#liq">Exit Liquidity</a><a href="#cost">Costs</a><a href="#learn">Learn</a><a href="#play">Spot the Rug</a><a href="#radar">Volume Radar</a><a href="#hot">Hot Tokens</a></div></header>
 <main class="w">
 
 <section class="hero" id="scan">
@@ -64,9 +68,12 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <p class="mut" id="waSt" style="margin:10px 0 0">Scan a token above to analyze that trade, or just paste a wallet with nothing scanned to see its most recent trade. Beta: reads your last 40 transactions on-chain, so give it a minute.</p></div>
 <div id="ax"></div></section>
 
-<section id="strat"><h2>Strategy Lab <span class="pill">backtest, not prediction</span></h2>
-<p class="sub">Scan a token above first. This runs several mechanical entry/exit rules against that token's <b>real hourly price history since its pool launched</b> and shows what each would have returned. It is a backtest of the past, not a forecast — a coin that has hype and volume today can still die tomorrow.</p>
-<div class="card"><button class="btn" onclick="runStrat()">Backtest strategies on scanned token</button><p class="mut" id="stratSt" style="margin:10px 0 0">Needs a token scanned above with a SOL-paired pool.</p></div>
+<section id="strat"><h2>Strategy Lab <span class="pill">plan it before you trade it</span></h2>
+<p class="sub">Draw your trade before you take it. Set where you buy, where you sell and where the idea is wrong, then see it on a chart with your risk and reward. Try an example plan, or scan a token above to use its real numbers.</p>
+<div class="card"><div class="row" style="align-items:end"><label>Current market cap<input id="sMc" oninput="stratEdit()" inputmode="decimal"></label><label>All-time high market cap<input id="sAth" oninput="stratEdit()" inputmode="decimal"></label><label>Position size (USD)<input id="sSize" type="number" value="500" oninput="stratEdit()"></label><label>Fees + slippage per trade (%)<input id="sCost" type="number" value="2" oninput="stratEdit()"></label><button class="btn g" style="flex:none" onclick="stratFill()">Use scanned token</button></div>
+<p class="mut" id="stratSt" style="margin:10px 0 0">Showing example numbers. Scan a token above and press Use scanned token to load its real market cap and high.</p></div>
+<div class="card"><b>Start from a plan</b><div class="row" id="stratPre" style="margin-top:10px"></div></div>
+<div class="card"><b>Your plan</b><p class="mut" style="margin:2px 0 10px">Type market caps like 1.5M or 800K. Leave the optional boxes empty if you don't need them.</p><div class="row"><label>Buy at<input id="sE1" oninput="stratEdit()" inputmode="decimal"></label><label>Second buy (optional)<input id="sE2" oninput="stratEdit()" inputmode="decimal"></label><label>Sell at<input id="sT1" oninput="stratEdit()" inputmode="decimal"></label><label>Second sell (optional)<input id="sT2" oninput="stratEdit()" inputmode="decimal"></label><label>Stop-loss at<input id="sSt" oninput="stratEdit()" inputmode="decimal"></label></div></div>
 <div id="stratOut"></div></section>
 
 <section id="liq"><h2>Exit Liquidity Meter</h2>
@@ -82,6 +89,11 @@ footer{margin-top:64px;border-top:1px solid var(--line);padding:24px 0 40px;colo
 <section id="play"><h2>Spot the Rug</h2><p class="sub">Fictional tokens. Judge from the stats. Score: <b id="sc">0/0</b></p>
 <label style="max-width:200px;margin-bottom:8px"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="hardMode" style="width:auto" onchange="ci=0;spot()"> Advanced (harder cases)</span></label>
 <div class="card" id="spotBox"></div></section>
+
+<section id="radar"><h2>Volume Radar <span class="pill">catches spikes, not just size</span></h2>
+<p class="sub">Hot Tokens ranks by how much volume a pool has right now. This ranks by how much that volume just changed — a pool trading many times its usual pace in the last hour, which is what a catalyst (a listing, a tweet, a big buyer) or a brand-new launch taking off both look like on-chain. Updates every 60 seconds.</p>
+<div class="card"><div class="row" style="align-items:center;gap:14px"><button class="btn" onclick="loadRadar()">Refresh now</button><label style="max-width:170px;flex:none"><span class="row" style="align-items:center;gap:6px"><input type="checkbox" id="radarAuto" checked style="width:auto"> Auto-refresh</span></label><p class="mut" id="radarSt" style="margin:0">Loading...</p></div></div>
+<div id="radarOut"></div></section>
 
 <section id="hot"><h2>Hot Tokens <span class="pill">trending + quick heuristic, not a full check</span></h2>
 <p class="sub">Live trending Solana pools (from GeckoTerminal), ranked by 24h volume. Each gets a fast heuristic read from liquidity, volume and age — this is <b>not</b> a full rug check. Click Scan on any of them to run the real thing.</p>
@@ -148,7 +160,7 @@ async function scan(){
  if(TOKX.img&&$("tokImg"))$("tokImg").innerHTML=`<img src="${TOKX.img}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${((mk?.sym||"?")[0]||"?")}'">`;
  if(!mk&&!ok){$("st").textContent="No live data could be loaded. "+log.join(" | ")+". If this page is open inside a preview or sandboxed viewer, the browser blocks outside requests. Try it on your hosted site. You can still enter values manually below.";$("man").open=true}
  else $("st").textContent="Loaded from: "+src.join(", ")+"."+(log.length?" Unavailable: "+log.join(" | ")+".":"")+" Values below were auto-filled and you can adjust them.";
- rug();
+ rug();if(mk)stratFill();
 }
 
 /* ---------- Rug checker ---------- */
@@ -175,41 +187,51 @@ function rug(){const g=id=>$(id).value,top=num("top"),dev=num("dev"),tax=num("ta
  <div><b style="font:800 24px Sora" class="${gr[1]}">${gr[0]}</b><div class="mut">Score out of 100. Passing does not mean safe: hidden bundles and coordinated dumps are not covered.</div><button class="btn g" style="margin-top:10px" onclick="card()">Preview report card</button></div></div>
  ${RC.I.map(i=>`<div class="it ${i.sev}"><b>${i.t}</b><span class="mut">${i.d}</span></div>`).join("")}
  ${HOLDERS.length?`<div class="card tw" style="margin-top:10px"><b>Top holders <span class="pill">your own wallet tags, not verified identities</span></b><table><tr><th>Wallet</th><th>%</th><th>Your tag</th><th></th></tr>${HOLDERS.map((h,i)=>`<tr><td class="mut">${h.addr?h.addr.slice(0,4)+"…"+h.addr.slice(-4):"n/a"}</td><td>${h.pct.toFixed(1)}%</td><td id="htag${i}">${loadTags()[h.addr]||"—"}</td><td>${h.addr?`<button class="btn g" style="padding:4px 10px;font-size:12px" onclick="tagPrompt('${h.addr}',${i})">Tag</button>`:""}</td></tr>`).join("")}</table><p class="mut" style="margin-top:8px">Tags are labels you add yourself (saved on this device) — e.g. a wallet you know from elsewhere. We never guess whose wallet this is.</p></div>`:""}
- <div id="cardPrevWrap" style="display:none;margin-top:14px"><canvas id="cardCanvas" style="width:100%;max-width:380px;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto"></canvas><div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="dlCard()">Download PNG</button></div></div></div>`}
+ <div id="cardPrevWrap" style="display:none;margin-top:14px"><canvas id="cardCanvas" style="width:100%;max-width:480px;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto"></canvas><div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="dlCard()">Download PNG</button></div></div></div>`}
 document.querySelectorAll("#rugIn select,#rugIn input").forEach(e=>e.oninput=rug);rug();
 function loadTags(){try{return JSON.parse(localStorage.getItem("tt_tags")||"{}")}catch(e){return{}}}
 function tagPrompt(addr,i){const cur=loadTags();const v=prompt("Your label for this wallet ("+addr.slice(0,4)+"…"+addr.slice(-4)+"):",cur[addr]||"");if(v===null)return;const t=loadTags();if(v.trim())t[addr]=v.trim().slice(0,40);else delete t[addr];localStorage.setItem("tt_tags",JSON.stringify(t));$("htag"+i).textContent=t[addr]||"—"}
 async function card(noImg){$("cardPrevWrap").style.display="block";const c=$("cardCanvas");c.width=800;c.height=1000;const x=c.getContext("2d");
+ try{await Promise.all(["800 20px Sora","700 20px 'DM Sans'","500 20px 'DM Sans'"].map(f=>document.fonts.load(f)))}catch(e){}
+ const cf=n=>n>=1e9?"$"+(n/1e9).toFixed(2)+"B":n>=1e6?"$"+(n/1e6).toFixed(2)+"M":n>=1e3?"$"+(n/1e3).toFixed(1)+"K":"$"+Math.round(n),
+ fit=(t,w,px,wt,fam)=>{let z=px;while(z>14){x.font=`${wt} ${z}px ${fam}`;if(x.measureText(t).width<=w)break;z-=2}x.font=`${wt} ${z}px ${fam}`},
+ cut=(t,w)=>{if(x.measureText(t).width<=w)return t;while(t.length>1&&x.measureText(t+"…").width>w)t=t.slice(0,-1);return t+"…"},
+ rr=(a,b,w,h,r)=>{x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath()},
+ col=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73",SD="'DM Sans'";
  const bg=x.createLinearGradient(0,0,800,1000);bg.addColorStop(0,"#0a0913");bg.addColorStop(1,"#150f2e");x.fillStyle=bg;x.fillRect(0,0,800,1000);
  const g1=x.createRadialGradient(680,60,10,680,60,360);g1.addColorStop(0,"#8b6cff4d");g1.addColorStop(1,"#8b6cff00");x.fillStyle=g1;x.fillRect(0,0,800,1000);
  const g2=x.createRadialGradient(80,940,10,80,940,320);g2.addColorStop(0,"#ff5fa23d");g2.addColorStop(1,"#ff5fa200");x.fillStyle=g2;x.fillRect(0,0,800,1000);
  const bd=x.createLinearGradient(0,0,800,1000);bd.addColorStop(0,"#8b6cff");bd.addColorStop(1,"#ff5fa2");x.strokeStyle=bd;x.lineWidth=3;x.strokeRect(6,6,788,988);
- x.fillStyle="#8b6cff";x.font="800 15px Sora";x.textAlign="left";x.fillText("🧪  TRENCH TOOLKIT",40,52);
- x.fillStyle="#9a97c4";x.font="700 12px DM Sans";x.textAlign="right";x.fillText("RISK REPORT",760,52);
- x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,72);x.lineTo(760,72);x.stroke();
+ x.textBaseline="alphabetic";x.textAlign="left";x.fillStyle="#b9a6ff";x.font="800 24px Sora";x.fillText("🧪 Trench Toolkit",40,56);
+ x.textAlign="right";x.fillStyle="#9a97c4";x.font="700 20px "+SD;x.fillText("Risk report · "+new Date().toLocaleDateString(),760,56);
+ x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,84);x.lineTo(760,84);x.stroke();
  let img=null;if(!noImg&&TOKX.img){try{img=await new Promise((res,rej)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>res(im);im.onerror=rej;setTimeout(rej,4000);im.src=TOKX.img})}catch(e){img=null}}
- x.save();x.beginPath();x.arc(108,164,58,0,Math.PI*2);x.closePath();x.clip();
- if(img)x.drawImage(img,50,106,116,116);else{x.fillStyle="#292651";x.fillRect(50,106,116,116);x.fillStyle="#eceaff";x.textAlign="center";x.textBaseline="middle";x.font="800 50px Sora";x.fillText(((TOKX.sym||"?")[0]||"?").toUpperCase(),108,164)}
+ x.save();x.beginPath();x.arc(112,212,62,0,Math.PI*2);x.closePath();x.clip();
+ if(img)x.drawImage(img,50,150,124,124);else{x.fillStyle="#292651";x.fillRect(50,150,124,124);x.fillStyle="#eceaff";x.textAlign="center";x.textBaseline="middle";x.font="800 54px Sora";x.fillText(((TOKX.sym||"?")[0]||"?").toUpperCase(),112,212)}
  x.restore();x.textAlign="left";x.textBaseline="alphabetic";
- x.fillStyle="#eceaff";x.font="800 38px Sora";x.fillText("$"+(TOKX.sym||"TOKEN"),190,150);
- x.fillStyle="#9a97c4";x.font="16px DM Sans";x.fillText((TOKX.name||"").slice(0,32),190,178);
- const cx=670,cy=164,rr=76,frac=RC.s/100,col=RC.s>=80?"#3df2b0":RC.s>=50?"#ffc44d":"#ff5d73";
- x.lineWidth=13;x.strokeStyle="#292651";x.beginPath();x.arc(cx,cy,rr,0,Math.PI*2);x.stroke();
- x.strokeStyle=col;x.lineCap="round";x.beginPath();x.arc(cx,cy,rr,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);x.stroke();
- x.textAlign="center";x.fillStyle="#eceaff";x.font="800 38px Sora";x.fillText(RC.s,cx,cy+10);x.font="12px DM Sans";x.fillStyle="#9a97c4";x.fillText("/ 100",cx,cy+30);
- x.font="800 18px Sora";x.fillStyle=col;x.fillText(RC.grade,cx,cy+96);x.textAlign="left";
- const stats=[["Price",mk&&mk.price?"$"+mk.price:"n/a"],["Liquidity",mk?usd(mk.liq):"n/a"],["Market cap",mk?usd(mk.mc):"n/a"],["24h volume",mk?usd(mk.vol):"n/a"]];
- const sw=180;x.font="700 11px DM Sans";x.fillStyle="#9a97c4";
- stats.forEach((s,i)=>{const sx=40+i*sw;x.fillStyle="#9a97c4";x.font="700 11px DM Sans";x.fillText(s[0].toUpperCase(),sx,254);x.fillStyle="#eceaff";x.font="800 20px Sora";x.fillText(s[1],sx,280)});
- x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,310);x.lineTo(760,310);x.stroke();
- x.font="700 14px Sora";x.fillStyle="#9a97c4";x.fillText("KEY FLAGS",40,344);
- x.font="17px DM Sans";const bad=RC.I.filter(i=>i.sev!="ok");
- if(!bad.length){x.fillStyle="#3df2b0";x.fillText("No classic red flags found in this check.",40,382)}
- bad.slice(0,8).forEach((i,k)=>{const y=382+k*44,dot=i.sev=="bad"?"#ff5d73":"#ffc44d";x.fillStyle=dot;x.beginPath();x.arc(48,y-6,5,0,Math.PI*2);x.fill();x.fillStyle="#eceaff";const t=i.t.length>54?i.t.slice(0,54)+"…":i.t;x.fillText(t,66,y)});
- const fy=940;x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,fy-30);x.lineTo(760,fy-30);x.stroke();
- x.font="800 20px Sora";x.fillStyle="#eceaff";x.fillText("🧪 Trench Toolkit",40,fy);
- x.textAlign="right";x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText(new Date().toLocaleDateString(),760,fy);x.textAlign="left";
- x.font="13px DM Sans";x.fillStyle="#9a97c4";x.fillText("Free memecoin risk checks · not financial advice · passing ≠ safe",40,fy+24);
+ x.fillStyle="#eceaff";fit("$"+(TOKX.sym||"TOKEN"),340,60,800,"Sora");x.fillText("$"+(TOKX.sym||"TOKEN"),204,206);
+ x.fillStyle="#9a97c4";x.font="500 26px "+SD;x.fillText(cut(TOKX.name||"",340),204,248);
+ const nb=RC.I.filter(i=>i.sev=="bad").length,nw=RC.I.filter(i=>i.sev=="warn").length,sm=[nb?nb+" red flag"+(nb>1?"s":""):"",nw?nw+" to watch":""].filter(Boolean).join(" · ")||"No red flags found";
+ x.fillStyle=col;x.font="700 24px "+SD;x.fillText(cut(sm,340),204,296);
+ const cx=660,cy=212,r0=78;x.lineWidth=16;x.strokeStyle="#292651";x.beginPath();x.arc(cx,cy,r0,0,Math.PI*2);x.stroke();
+ x.strokeStyle=col;x.lineCap="round";x.beginPath();x.arc(cx,cy,r0,-Math.PI/2,-Math.PI/2+RC.s/100*Math.PI*2);x.stroke();x.lineCap="butt";
+ x.textAlign="center";x.fillStyle="#eceaff";x.font="800 60px Sora";x.fillText(RC.s,cx,cy+20);x.font="500 18px "+SD;x.fillStyle="#9a97c4";x.fillText("out of 100",cx,cy+48);
+ x.fillStyle=col;fit(RC.grade,200,26,800,"Sora");x.fillText(RC.grade,cx,338);x.textAlign="left";
+ x.strokeStyle="#292651";x.beginPath();x.moveTo(40,362);x.lineTo(760,362);x.stroke();
+ const chg=mk&&mk.ch!=null?mk.ch:null,age=mk&&mk.age!=null?(mk.age<48?mk.age.toFixed(0)+" hours":(mk.age/24).toFixed(0)+" days"):"n/a",
+ tiles=[["Price",mk&&mk.price?"$"+String(mk.price).slice(0,11):"n/a"],["Market cap",mk?cf(mk.mc):"n/a"],["Liquidity",mk?cf(mk.liq):"n/a"],["24h volume",mk?cf(mk.vol):"n/a"],["24h change",chg!=null?(chg>0?"+":"")+chg+"%":"n/a",chg==null?"#eceaff":chg>=0?"#3df2b0":"#ff5d73"],["Pair age",age]];
+ tiles.forEach((t,i)=>{const sx=40+(i%3)*247,sy=380+Math.floor(i/3)*104;rr(sx,sy,226,92,14);x.fillStyle="#131126";x.fill();x.strokeStyle="#292651";x.lineWidth=1.5;x.stroke();
+  x.fillStyle="#9a97c4";x.font="700 17px "+SD;x.fillText(t[0],sx+18,sy+32);x.fillStyle=t[2]||"#eceaff";fit(t[1],190,34,800,"Sora");x.fillText(t[1],sx+18,sy+72)});
+ const ord={bad:0,warn:1,ok:2},items=RC.I.slice().sort((a,b)=>ord[a.sev]-ord[b.sev]),np=items.filter(i=>i.sev=="ok").length;
+ x.fillStyle="#eceaff";x.font="800 24px Sora";x.fillText("What we found",40,616);x.textAlign="right";x.fillStyle="#9a97c4";x.font="700 18px "+SD;x.fillText((items.length-np)+" flagged · "+np+" passed",760,616);x.textAlign="left";
+ items.slice(0,4).forEach((it,k)=>{const y=634+k*64,cc=it.sev=="bad"?"#ff5d73":it.sev=="warn"?"#ffc44d":"#3df2b0",lb=it.sev=="bad"?"High risk":it.sev=="warn"?"Watch":"Pass";
+  rr(40,y,720,56,12);x.fillStyle="#131126";x.fill();rr(40,y+10,5,36,3);x.fillStyle=cc;x.fill();
+  x.fillStyle="#eceaff";x.font="500 24px "+SD;x.fillText(cut(it.t,560),66,y+36);
+  rr(640,y+12,104,32,16);x.fillStyle=cc+"33";x.fill();x.fillStyle=cc;x.font="700 16px "+SD;x.textAlign="center";x.fillText(lb,692,y+34);x.textAlign="left"});
+ x.strokeStyle="#292651";x.lineWidth=1;x.beginPath();x.moveTo(40,906);x.lineTo(760,906);x.stroke();
+ x.fillStyle="#eceaff";x.font="800 24px Sora";x.fillText("🧪 Trench Toolkit",40,944);
+ x.textAlign="right";x.fillStyle="#9a97c4";x.font="500 18px "+SD;x.fillText("Not financial advice",760,944);x.textAlign="left";
+ x.font="500 17px "+SD;x.fillText("Free memecoin risk checks · passing a check does not mean safe",40,974);
  try{c.toDataURL("image/png")}catch(e){if(!noImg)return card(true)}}
 function dlCard(){const c=$("cardCanvas");let url;try{url=c.toDataURL("image/png")}catch(e){return}
  const a=document.createElement("a");a.download=(TOKX.sym||"risk")+"-card.png";a.href=url;a.click()}
@@ -289,52 +311,72 @@ async function loadWallet(){
  }catch(e){$("waSt").textContent="Could not build your real exit history: "+e.message+". You can still browse the sample wallet above."}
 }
 
-/* ---------- Strategy Lab (real backtest on scanned token) ---------- */
-const DIPS=[{name:"Wait for -50% dip, scalp +20%",dip:.5,tp:.2,sl:.15},{name:"Wait for -80% dip, scalp +30%",dip:.8,tp:.3,sl:.2},{name:"Wait for -65% dip, hold for 2x",dip:.65,tp:1,sl:.25}];
-function simMark(prices,r){let rem=1,peak=1,exitIdx=prices.length-1;const dn=(r.tp||[]).map(()=>0);
- for(let i=1;i<prices.length&&rem>0;i++){const v=prices[i];peak=Math.max(peak,v);
-  (r.tp||[]).forEach(([m,f],k)=>{if(!dn[k]&&v>=m&&rem>0){rem-=Math.min(f,rem);dn[k]=1;exitIdx=i}});
-  if(rem>0&&r.stop&&v<=1-r.stop){rem=0;exitIdx=i}else if(rem>0&&r.trail&&peak>=1.5&&v<=peak*(1-r.trail)){rem=0;exitIdx=i}}
- return exitIdx}
-function dipScalp(prices,r){let peak=prices[0],entry=null,ei=-1;
- for(let i=0;i<prices.length;i++){peak=Math.max(peak,prices[i]);
-  if(entry==null&&prices[i]<=peak*(1-r.dip)){entry=prices[i];ei=i;continue}
-  if(entry!=null){const chg=prices[i]/entry-1;if(chg>=r.tp)return{ret:r.tp*(1-SLIP),entered:true,exited:true,ei,xi:i};if(chg<=-r.sl)return{ret:-r.sl*(1+SLIP)-SLIP,entered:true,exited:true,ei,xi:i}}}
- if(entry!=null)return{ret:(prices[prices.length-1]/entry-1)*(1-SLIP),entered:true,exited:false,ei,xi:prices.length-1};
- return{ret:0,entered:false,exited:false,ei:-1,xi:-1}}
-function sparkline(prices,markers){const w=680,h=180,pad=8,mx=Math.max(...prices),mn=Math.min(...prices),rg=(mx-mn)||1;
- const X=i=>pad+i/(prices.length-1)*(w-2*pad),Y=v=>h-pad-(v-mn)/rg*(h-2*pad);
- const d=prices.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" ");
- const dots=markers.map(m=>m.i>=0?`<circle cx="${X(m.i).toFixed(1)}" cy="${Y(prices[m.i]).toFixed(1)}" r="5" fill="${m.c}"/><text x="${X(m.i).toFixed(1)}" y="${Y(prices[m.i])-10}" fill="${m.c}" font-size="11" font-family="DM Sans" text-anchor="middle">${m.l}</text>`:"").join("");
- return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block"><path d="${d}" fill="none" stroke="#8b6cff" stroke-width="2"/>${dots}</svg>`}
-async function runStrat(){
- if(!mk||!mk.pair){$("stratSt").textContent="Scan a token above first.";return}
- if((mk.quote||"").toUpperCase()!="SOL"){$("stratSt").textContent="This only works for SOL-paired pools right now.";return}
- $("stratSt").textContent="Pulling full hourly price history...";
- try{
-  const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
-  if(!oh||!oh.data||!oh.data.attributes)throw new Error("no price history available for this pool yet");
-  const list=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]);
-  if(list.length<5)throw new Error("not enough price history yet for this pool");
-  const base=list[0][4],prices=list.map(r=>r[4]/base);
-  const holdRes=RULES.map(r=>({name:r.name,rule:r,ret:sim({s:1,e:prices.length-1,run:0,p:prices},r)-1})).sort((a,b)=>b.ret-a.ret);
-  const dipRes=DIPS.map(r=>({name:r.name,...dipScalp(prices,r)}));
-  const bestHold=holdRes[0],bestDip=dipRes.filter(d=>d.entered).sort((a,b)=>b.ret-a.ret)[0],bestHoldExit=simMark(prices,bestHold.rule);
-  const bsr=mk.buys!=null&&mk.sells!=null?mk.buys/(mk.sells||1):null;
-  const hype=[];
-  if(mk.vol&&mk.mc)hype.push(mk.vol/mk.mc>0.3?"24h volume is over 30% of market cap — still actively traded.":"Volume is thin relative to market cap — interest may be fading.");
-  if(bsr!=null)hype.push(bsr>=1?"More buys than sells in the last 24h.":"More sells than buys in the last 24h — momentum looks weak.");
-  if(mk.boosts)hype.push("Attention is partly paid (active boosts), not fully organic.");
-  const posEl=$("stratPos"),pos=(posEl&&+posEl.value)||500;
-  $("stratOut").innerHTML=`<div class="card"><b>Signal read</b>${hype.map(h=>`<div class="it info"><b>${h}</b></div>`).join("")||'<div class="mut">No strong signal either way from current stats.</div>'}</div>
-  <div class="card"><b>Best rule on this chart</b><div class="mut" style="margin:6px 0 10px">Green = entry, pink = exit, for "${bestHold.name}"${bestDip?` (yellow = dip-entry play: "${bestDip.name}")`:""}.</div>${sparkline(prices,[{i:0,c:"#3df2b0",l:"Entry"},{i:bestHoldExit,c:"#ff5d73",l:"Exit"}].concat(bestDip?[{i:bestDip.ei,c:"#ffc44d",l:"Dip entry"},{i:bestDip.xi,c:"#ff5d73",l:"Exit"}]:[]))}</div>
-  <div class="card"><label>Hypothetical position size (USD)<input id="stratPos" type="number" value="${pos}" oninput="runStrat()"></label></div>
-  <div class="card tw"><b>If you bought at launch and held with a rule</b><table><tr><th>Rule</th><th>Return</th><th>on ${usd(pos)}</th></tr>${holdRes.map(r=>`<tr><td>${r.name}</td><td class="${cls(r.ret)}">${(r.ret*100).toFixed(0)}%</td><td class="${cls(r.ret)}">${sg(pos*r.ret)}</td></tr>`).join("")}</table></div>
-  <div class="card tw"><b>If you waited for a dip instead of buying launch (new-pair scalp)</b><table><tr><th>Rule</th><th>Triggered?</th><th>Return</th><th>on ${usd(pos)}</th></tr>${dipRes.map(r=>`<tr><td>${r.name}</td><td class="mut">${r.entered?(r.exited?"yes, closed":"yes, still open"):"never dipped that far"}</td><td class="${cls(r.ret)}">${(r.ret*100).toFixed(0)}%</td><td class="${cls(r.ret)}">${sg(pos*r.ret)}</td></tr>`).join("")}</table></div>
-  <div class="it warn"><b>Read this before acting</b><span class="mut">These numbers are what each rule would have done on THIS token's actual past candles. Past price shape says nothing about whether this specific coin keeps trading tomorrow — it can still go to zero. Not financial advice.</span></div>`;
-  $("stratSt").textContent="Backtested on "+list.length+" hourly candles since this pool's first tracked hour.";
- }catch(e){$("stratSt").textContent="Could not backtest: "+e.message}
-}
+/* ---------- Strategy Lab (forward-looking trade plans) ---------- */
+let STRAT={hist:null};
+const sPm=s=>{const m=String(s||"").replace(/[$,\s]/g,"").match(/^([\d.]+)([kmb])?$/i);return m?+m[1]*({k:1e3,m:1e6,b:1e9}[(m[2]||"").toLowerCase()]||1):0},
+sFm=n=>n>=1e9?"$"+(n/1e9).toFixed(2).replace(/\.?0+$/,"")+"B":n>=1e6?"$"+(n/1e6).toFixed(2).replace(/\.?0+$/,"")+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+Math.round(n),
+sFt=n=>sFm(n).slice(1),sNice=n=>+n.toPrecision(2);
+const SPRE=[
+{n:"Dip scalp 2x",d:"Wait for a 25% dip, buy, sell at 2x",f:(c,a)=>({e1:c*.75,t1:c*1.5,s:c*.6})},
+{n:"Dip, then ladder out",d:"Buy the dip, sell half at 1.5x and the rest at 2.5x",f:(c,a)=>({e1:c*.75,t1:c*1.125,t2:c*1.875,s:c*.6})},
+{n:"Scale in on the dip",d:"Split your buy across two lower levels",f:(c,a)=>({e1:c*.8,e2:c*.6,t1:c,t2:Math.max(a,c*1.4),s:c*.45})},
+{n:"Quick 1.3x flip",d:"Small dip, small target, tight stop",f:(c,a)=>({e1:c*.9,t1:c*1.17,s:c*.81})},
+{n:"Break the ATH",d:"Buy only once it clears the old high",f:(c,a)=>({e1:a*1.05,t1:a*1.6,s:a*.92})}];
+function stratPreset(i){const c=sPm($("sMc").value),a=sPm($("sAth").value)||c*1.5;if(!c)return;const r=SPRE[i].f(c,a);
+ [["sE1","e1"],["sE2","e2"],["sT1","t1"],["sT2","t2"],["sSt","s"]].forEach(([id,k])=>$(id).value=r[k]?sFt(sNice(r[k])):"");
+ document.querySelectorAll(".chip").forEach((b,k)=>b.classList.toggle("on",k==i));stratDraw()}
+function stratEdit(){document.querySelectorAll(".chip.on").forEach(b=>b.classList.remove("on"));stratDraw()}
+async function stratFill(){
+ if(!mk){$("stratSt").textContent="Scan a token above first, or type your own numbers.";return}
+ $("sMc").value=sFt(mk.mc);STRAT.hist=null;
+ try{const oh=await j(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${mk.pair}/ohlcv/hour?aggregate=1&before_timestamp=${Math.floor(Date.now()/1e3)}&limit=1000`);
+  const l=(oh.data.attributes.ohlcv_list||[]).sort((a,b)=>a[0]-b[0]),k=mk.price>0?mk.mc/mk.price:0;
+  if(l.length<5||!k)throw new Error("no history");
+  STRAT.hist=l.map(r=>r[4]*k);$("sAth").value=sFt(Math.max(...l.map(r=>r[2]))*k);
+  $("stratSt").textContent="Loaded "+mk.sym+". Market cap and all-time high come from its real hourly candles, so the chart shows its actual price so far."}
+ catch(e){$("stratSt").textContent="Loaded "+mk.sym+"'s market cap. No price history was found, so enter the all-time high yourself. The chart line is illustrative."}
+ stratPreset(0)}
+function stratChart(cur,ath,E,X,stop,avg){
+ const W=780,H=400,pl=10,pr=130,pt=18,pb=18,pw=W-pl-pr,ph=H-pt-pb,hw=pw*.55,xN=pl+hw,xR=pl+pw,fw=xR-xN,
+ lv=[cur,ath,...E,...X,stop].filter(v=>v>0),lo=Math.min(...lv)*.8,hi=Math.max(...lv)*1.12,L=Math.log,Y=v=>pt+(1-(L(v)-L(lo))/(L(hi)-L(lo)))*ph;
+ let h=STRAT.hist&&STRAT.hist.length>=5?STRAT.hist.slice(-200).filter(v=>v>0):null;
+ if(h&&h.length>=5)h[h.length-1]=cur;else{const a=Math.max(ath,cur),n=40,k=17;h=[];for(let i=0;i<n;i++){const w=1-.05*Math.abs(Math.sin(i*2.7));h.push(i==k?a:i<k?a*(.12+.88*Math.pow(i/k,1.6))*w:(a-(a-cur)*Math.pow((i-k)/(n-1-k),.8))*w)}h[n-1]=cur}
+ const P=h.map((v,i)=>(i?"L":"M")+(pl+i/(h.length-1)*hw).toFixed(1)+","+Y(v).toFixed(1)).join(" "),
+ brk=E.every(e=>e>cur*1.01),seq=[...[...E].sort((a,b)=>brk?a-b:b-a).map(v=>({v,t:"Buy",c:"#3df2b0"})),...X.map(v=>({v,t:"Sell",c:"#ff5fa2"}))],
+ fx=k=>xN+(k+1)/seq.length*fw*.88,x0=fx(0),path="M"+xN+","+Y(cur).toFixed(1)+seq.map((s,k)=>" L"+fx(k).toFixed(1)+","+Y(s.v).toFixed(1)).join(""),
+ zone=(a,b,c)=>`<rect x="${x0.toFixed(1)}" y="${Y(Math.max(a,b)).toFixed(1)}" width="${(xR-x0).toFixed(1)}" height="${Math.abs(Y(a)-Y(b)).toFixed(1)}" fill="${c}" opacity=".14"/>`,
+ lines=[{v:cur,c:"#eceaff",t:"Now "+sFm(cur)},{v:ath,c:"#ffc44d",t:"ATH "+sFm(ath)},...E.map(v=>({v,c:"#3df2b0",t:"Buy "+sFm(v)})),...X.map(v=>({v,c:"#ff5fa2",t:"Sell "+sFm(v)+" · "+(v/avg).toFixed(1)+"x"})),...(stop?[{v:stop,c:"#ff5d73",t:"Stop "+sFm(stop)}]:[])].filter(l=>l.v>0).map(l=>({...l,y:Y(l.v)})).sort((a,b)=>a.y-b.y);
+ lines.forEach((l,i)=>l.ly=i?Math.max(l.y,lines[i-1].ly+17):l.y);
+ return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:620px;height:auto;display:block;font-family:'DM Sans',sans-serif"><defs><clipPath id="sc"><rect x="${pl}" y="${pt}" width="${pw}" height="${ph}"/></clipPath></defs>
+ ${zone(X[X.length-1],avg,"#3df2b0")}${stop&&stop<avg?zone(avg,stop,"#ff5d73"):""}
+ ${lines.map(l=>`<line x1="${pl}" x2="${xR}" y1="${l.y.toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="${l.c}" stroke-dasharray="4 5" opacity=".5"/><text x="${xR+10}" y="${(l.ly+5).toFixed(1)}" fill="${l.c}" font-size="14" font-weight="700">${l.t}</text>`).join("")}
+ <line x1="${xN}" x2="${xN}" y1="${pt}" y2="${pt+ph}" stroke="#9a97c4" opacity=".4"/><text x="${pl+4}" y="${pt+14}" fill="#9a97c4" font-size="13">Price so far</text><text x="${xN+8}" y="${pt+14}" fill="#9a97c4" font-size="13">Your plan</text>
+ <path d="${P}" fill="none" stroke="#8b6cff" stroke-width="2.5" clip-path="url(#sc)"/>
+ <path d="${path}" fill="none" stroke="#eceaff" stroke-width="2" stroke-dasharray="7 6"/>
+ ${seq.map((s,k)=>`<circle cx="${fx(k).toFixed(1)}" cy="${Y(s.v).toFixed(1)}" r="7" fill="${s.c}" stroke="#0a0913" stroke-width="2"/><text x="${fx(k).toFixed(1)}" y="${(Y(s.v)-13).toFixed(1)}" fill="${s.c}" font-size="14" font-weight="700" text-anchor="middle">${s.t}</text>`).join("")}</svg>`}
+function stratDraw(){
+ const cur=sPm($("sMc").value),ath=sPm($("sAth").value),size=+$("sSize").value||0,fee=(+$("sCost").value||0)/100,
+ E=[$("sE1").value,$("sE2").value].map(v=>sPm(v)).filter(v=>v>0),X=[$("sT1").value,$("sT2").value].map(v=>sPm(v)).filter(v=>v>0).sort((a,b)=>a-b),stop=sPm($("sSt").value),o=$("stratOut");
+ if(!(cur>0&&E.length&&X.length&&size>0)){o.innerHTML='<div class="card mut">Add your current market cap, one buy level, one sell target and a position size to see the plan.</div>';return}
+ const avg=E.length/E.reduce((a,e)=>a+1/e,0),units=E.reduce((a,e)=>a+size/E.length*(1-fee)/e,0),fr=X.length>1?[.5,.5]:[1],avgX=X.reduce((a,x,i)=>a+fr[i]*x,0),
+ win=units*avgX*(1-fee)-size,lose=stop>0&&stop<avg?units*stop*(1-fee)-size:null,rr=lose!=null&&lose<0?win/-lose:null,
+ brk=E.every(e=>e>cur*1.01),tr=brk?Math.min(...E):Math.max(...E.filter(e=>e<=cur*1.01)),mv=(tr/cur-1)*100,W=[];
+ const st=brk?`Waiting for a breakout: market cap has to rise ${mv.toFixed(0)}% to ${sFm(tr)} before you buy.`:mv<-1?`Waiting for a dip: market cap has to fall ${Math.abs(mv).toFixed(0)}% from ${sFm(cur)} to ${sFm(tr)} before you buy.`:"Your buy level is at today's market cap, so this plan can trigger right now.";
+ const wn=(s,t,d)=>W.push(`<div class="it ${s}"><b>${t}</b><span class="mut">${d}</span></div>`);
+ if(X[0]<=avg)wn("bad","Your target is below your entry","Even if this works you lose money after fees. Move the sell level above "+sFm(avg)+".");
+ if(!stop)wn("warn","No stop-loss set","Without a stop, the plan has no exit if the coin bleeds out. Pick the market cap where the idea is wrong.");
+ else if(stop>=Math.min(...E))wn("bad","Stop is at or above your buy","You would be stopped out the moment you buy. Put the stop below "+sFm(Math.min(...E))+".");
+ if(rr!=null&&rr<1.5)wn("warn","Reward is only "+rr.toFixed(1)+"x your risk","Plans usually aim for at least 1.5x. Raise the target or tighten the stop.");
+ if(ath&&X[X.length-1]>ath*1.02)wn("info","Your target is above the ATH","You are betting on a new high. Targets at or below the old high are easier to hit.");
+ if(!W.length)wn("ok","Plan is coherent","Levels are in a sensible order and reward beats risk. That says nothing about whether this token will actually move this way.");
+ const tile=(l,v,c)=>`<div class="card stat"><b class="${c||""}">${v}</b><span>${l}</span></div>`;
+ o.innerHTML=`<div class="card"><b style="font:800 18px Sora">Buy ${E.map(sFm).join(" then ")}. Sell ${X.map(sFm).join(" then ")}.${stop?" Stop at "+sFm(stop)+".":""}</b><p class="mut" style="margin:6px 0 0">${st}</p></div>
+ <div class="card tw">${stratChart(cur,ath,E,X,stop,avg)}<p class="mut" style="margin:8px 0 0">Solid line: ${STRAT.hist?"this token's real hourly market cap":"an illustrative path built from your high and current market cap"}. Dashed line: your plan. Green zone is profit, red zone is loss.</p></div>
+ <div class="grid">${tile("Average buy",sFm(avg))}${tile("Average sell",sFm(avgX)+" ("+(avgX/avg).toFixed(2)+"x)")}${tile("If it works",sg(win)+" ("+(win/size*100).toFixed(0)+"%)",cls(win))}${tile("If stopped out",lose!=null?sg(lose)+" ("+(lose/size*100).toFixed(0)+"%)":"No stop set",lose!=null?"bad":"")}${tile("Reward vs risk",rr!=null?rr.toFixed(1)+" : 1":"n/a")}${tile("Move needed to buy",(mv>0?"+":"")+mv.toFixed(0)+"%")}</div>
+ <div style="margin-top:12px">${W.join("")}</div>
+ <p class="mut">Includes ${(fee*100).toFixed(1).replace(/\.0$/,"")}% fees and slippage on the buy and the sell, and assumes every buy level fills. A plan is not a prediction: a coin can go to zero without touching your levels. Not financial advice.</p>`}
+$("stratPre").innerHTML=SPRE.map((p,i)=>`<button class="chip" onclick="stratPreset(${i})"><b>${p.n}</b><span>${p.d}</span></button>`).join("");
+$("sMc").value="2M";$("sAth").value="3M";stratPreset(0);
 
 /* ---------- Exit liquidity ---------- */
 function liq(){const L=num("L")/2,P=num("P"),Q=num("Q");if(L<=0){$("liqOut").textContent="Enter pool liquidity.";return}
@@ -367,6 +409,41 @@ function ans(g){const P=pool(),c=P[ci%P.length];n++;if(g===c.rug)ok++;$("sc").te
 spot();
 
 /* ---------- Hot Tokens (trending, quick heuristic only) ---------- */
+/* ---------- Volume Radar (catalyst / spike detector) ---------- */
+let RADAR_TIMER=null;
+function radarRow(r,tag,tagCol){
+ return `<div class="card"><div class="row" style="align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+ <div class="row" style="align-items:center;gap:12px;min-width:0"><div style="width:38px;height:38px;border-radius:50%;background:var(--s2);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font:800 15px Sora">${r.img?`<img src="${r.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`:((r.name||"?")[0]||"?")}</div>
+ <div style="min-width:0"><b style="font:700 15px Sora">${(r.name||"unknown").slice(0,40)}</b><div class="mut" style="font-size:12px">${usd(r.liq)} liq · ${usd(r.h1*24)} pace (24h-equiv) · ${r.ageH!=null?(r.ageH<48?r.ageH.toFixed(0)+"h old":(r.ageH/24).toFixed(0)+"d old"):"age n/a"}</div></div></div>
+ <div class="row" style="align-items:center;gap:10px;flex:none"><span class="pill" style="border-color:${tagCol};color:${tagCol}"><span class="dot live" style="background:${tagCol}"></span>${tag}</span><button class="btn g" onclick="scanFromHot('${r.mint}')">Scan</button></div></div></div>`}
+async function loadRadar(){
+ $("radarSt").textContent="Scanning for volume spikes...";
+ try{
+  const[t,n]=await Promise.allSettled([
+   j("https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?include=base_token&page=1"),
+   j("https://api.geckoterminal.com/api/v2/networks/solana/new_pools?include=base_token&page=1")]);
+  const rows={};
+  [t,n].forEach(res=>{if(res.status!=="fulfilled")return;const d=res.value,included={};(d.included||[]).forEach(tk=>included[tk.id]=tk.attributes);
+   (d.data||[]).forEach(p=>{const a=p.attributes,tokId=p.relationships?.base_token?.data?.id,tok=included[tokId]||{},mint=tokId?tokId.split("_").slice(1).join("_"):null;if(!mint||rows[mint])return;
+    const liq=+a.reserve_in_usd||0,h1=+(a.volume_usd&&a.volume_usd.h1)||0,h24=+(a.volume_usd&&a.volume_usd.h24)||0,ageH=a.pool_created_at?(Date.now()-new Date(a.pool_created_at).getTime())/36e5:null;
+    rows[mint]={name:a.name||"",liq,h1,h24,ageH,mint,img:tok.image_url&&!tok.image_url.includes("missing")?tok.image_url:null}})});
+  let list=Object.values(rows).filter(r=>r.liq>=3000&&r.h1>=300);
+  if(!list.length)throw new Error("no pools with enough live volume right now");
+  list.forEach(r=>{r.spike=r.h24>0?(r.h1*24)/r.h24:(r.h1>200?999:0);r.isNew=r.ageH!=null&&r.ageH<18});
+  const spikes=list.filter(r=>!r.isNew&&r.spike>=2.2).sort((a,b)=>b.spike-a.spike).slice(0,8);
+  const fresh=list.filter(r=>r.isNew).sort((a,b)=>b.h1-a.h1).slice(0,6);
+  $("radarSt").textContent="Updated "+new Date().toLocaleTimeString()+" · "+spikes.length+" spike"+(spikes.length==1?"":"s")+", "+fresh.length+" new pool"+(fresh.length==1?"":"s")+" with live volume.";
+  let out="";
+  if(spikes.length)out+=`<b style="font:800 15px Sora;display:block;margin:16px 0 6px">🔥 Sudden volume spikes</b><p class="mut" style="margin:0 0 10px">Trading much faster than its own 24h average right now — the shape a catalyst or a fresh wave of buyers leaves on-chain.</p>`+spikes.map(r=>radarRow(r,(r.spike>=99?">50":r.spike.toFixed(1))+"x normal pace","var(--warn)")).join("");
+  else out+=`<div class="card mut">No pool is trading noticeably faster than its own average right now. Check back soon.</div>`;
+  if(fresh.length)out+=`<b style="font:800 15px Sora;display:block;margin:20px 0 6px">🆕 New pools with real volume</b><p class="mut" style="margin:0 0 10px">Under 18 hours old and already trading — how a big new launch first shows up.</p>`+fresh.map(r=>radarRow(r,(r.ageH<1?(r.ageH*60).toFixed(0)+"m old":r.ageH.toFixed(0)+"h old"),"var(--v)")).join("");
+  $("radarOut").innerHTML=out;
+ }catch(e){$("radarSt").textContent="Could not load volume radar: "+e.message}
+ clearTimeout(RADAR_TIMER);if($("radarAuto")&&$("radarAuto").checked)RADAR_TIMER=setTimeout(loadRadar,60000)}
+$("radarAuto").onchange=()=>{clearTimeout(RADAR_TIMER);if($("radarAuto").checked)loadRadar()};
+loadRadar();
+
+
 function heuristic(p){let s=100;const flags=[];
  const liq=p.liq||0,vol=p.vol||0,ageH=p.ageH;
  if(liq<8000){s-=30;flags.push(["bad","Thin liquidity ("+usd(liq)+")"])}else if(liq<25000){s-=12;flags.push(["warn","Modest liquidity ("+usd(liq)+")"])}
